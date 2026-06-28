@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Release — Content Risk Scanner</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #111116;
+            --surface2: #18181f;
+            --surface3: #1e1e28;
+            --border: #2a2a3a;
+            --border2: #353548;
+            --ibm-blue: #0f62fe;
+            --ibm-blue-hover: #0353e9;
+            --ibm-cyan: #33b1ff;
+            --ibm-green: #42be65;
+            --ibm-yellow: #f1c21b;
+            --ibm-red: #fa4d56;
+            --ibm-purple: #be95ff;
+            --text: #f4f4f4;
+            --text2: #c6c6c6;
+            --text3: #8d8d8d;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            background: #161616;
+            border-bottom: 1px solid #393939;
+            padding: 0 32px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-left { display: flex; align-items: center; gap: 16px; }
+
+        .ibm-tag {
+            background: var(--ibm-blue);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            letter-spacing: 1px;
+        }
+
+        .nav-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.2px;
+        }
+
+        .nav-right {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--text3);
+            letter-spacing: 1px;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            padding: 56px 32px 52px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(160deg, #0a0a14 0%, #0d0d1a 60%, #0a0f1a 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 50%;
+            height: 100%;
+            background: radial-gradient(ellipse at 80% 50%, rgba(15,98,254,0.07) 0%, transparent 65%);
+            pointer-events: none;
+        }
+
+        .hero-eyebrow {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--ibm-cyan);
+            letter-spacing: 2px;
+            margin-bottom: 22px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            font-weight: 700;
+            line-height: 1.08;
+            letter-spacing: -1px;
+            margin-bottom: 20px;
+            max-width: 600px;
+        }
+
+        .hero h1 .accent { color: var(--ibm-blue); }
+
+        .hero-desc {
+            color: var(--text2);
+            font-size: 1rem;
+            max-width: 480px;
+            line-height: 1.65;
+            margin-bottom: 28px;
+        }
+
+        .hero-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .hero-tag {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--text3);
+            border: 1px solid var(--border2);
+            padding: 4px 12px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            min-height: calc(100vh - 48px - 200px);
+        }
+
+        /* ── LEFT PANEL ── */
+        .left-panel {
+            border-right: 1px solid var(--border);
+            padding: 0;
+        }
+
+        .panel-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: var(--text2);
+        }
+
+        .panel-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--ibm-blue);
+            flex-shrink: 0;
+        }
+
+        .panel-meta {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 1px;
+        }
+
+        /* ── CONTENT TYPE TABS ── */
+        .type-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .type-tab {
+            flex: 1;
+            padding: 12px 8px;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--border);
+            color: var(--text3);
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .type-tab:last-child { border-right: none; }
+        .type-tab:hover { background: var(--surface2); color: var(--text2); }
+
+        .type-tab.active {
+            background: var(--ibm-blue);
+            color: #fff;
+            border-bottom: 2px solid var(--ibm-cyan);
+        }
+
+        /* ── INPUT PANELS ── */
+        .input-section { padding: 24px; }
+
+        .input-label {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .input-panel { display: none; }
+        .input-panel.active { display: block; }
+
+        textarea {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-bottom: 2px solid var(--border2);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.88rem;
+            padding: 16px;
+            resize: vertical;
+            min-height: 220px;
+            outline: none;
+            line-height: 1.7;
+            transition: border-color 0.15s;
+        }
+
+        textarea:focus { border-color: var(--ibm-blue); border-bottom-color: var(--ibm-blue); }
+        textarea::placeholder { color: var(--text3); font-size: 0.85rem; }
+
+        .char-count {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+        }
+
+        /* Quick samples */
+        .samples-row {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .samples-label {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 1px;
+        }
+
+        .sample-chip {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+            padding: 3px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+        }
+
+        .sample-chip:hover { border-color: var(--ibm-blue); color: var(--ibm-cyan); background: rgba(15,98,254,0.07); }
+
+        /* Upload Zone */
+        .upload-zone {
+            background: var(--surface2);
+            border: 1px dashed var(--border2);
+            padding: 40px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .upload-zone:hover, .upload-zone.over {
+            border-color: var(--ibm-blue);
+            background: rgba(15,98,254,0.05);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .upload-icon { font-size: 2rem; }
+
+        .upload-main {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text2);
+        }
+
+        .upload-sub {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text3);
+            letter-spacing: 0.5px;
+        }
+
+        .upload-chosen {
+            display: none;
+            margin-top: 12px;
+            background: var(--surface3);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--ibm-green);
+            padding: 10px 14px;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--ibm-green);
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+        }
+
+        .upload-chosen.show { display: flex; }
+
+        /* Voice */
+        .voice-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0 12px;
+            gap: 14px;
+        }
+
+        .mic-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 2px solid var(--ibm-red);
+            background: rgba(250,77,86,0.1);
+            color: var(--ibm-red);
+            font-size: 1.6rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mic-btn:hover { background: rgba(250,77,86,0.2); transform: scale(1.04); }
+
+        .mic-btn.recording {
+            background: var(--ibm-red);
+            color: #fff;
+            animation: mic-pulse 1s infinite;
+            border-color: var(--ibm-red);
+        }
+
+        @keyframes mic-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250,77,86,0.5); }
+            50% { box-shadow: 0 0 0 12px rgba(250,77,86,0); }
+        }
+
+        .mic-status {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text3);
+            letter-spacing: 1px;
+        }
+
+        .mic-status.active { color: var(--ibm-red); }
+
+        audio {
+            width: 100%;
+            margin-top: 8px;
+            accent-color: var(--ibm-blue);
+            display: none;
+        }
+
+        audio.show { display: block; }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .or-text {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 2px;
+        }
+
+        /* Scan options */
+        .scan-options {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .options-label {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .options-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .option-btn {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            padding: 6px 14px;
+            border: 1px solid var(--border2);
+            background: transparent;
+            color: var(--text3);
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.5px;
+        }
+
+        .option-btn:hover { border-color: var(--ibm-blue); color: var(--ibm-cyan); }
+
+        .option-btn.selected {
+            background: var(--ibm-blue);
+            border-color: var(--ibm-blue);
+            color: #fff;
+        }
+
+        /* Run button */
+        .run-wrap {
+            padding: 20px 24px;
+        }
+
+        .run-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--ibm-blue);
+            border: none;
+            color: #fff;
+            font-family: var(--sans);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .run-btn:hover:not(:disabled) { background: var(--ibm-blue-hover); }
+        .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* Progress */
+        .progress-bar {
+            display: none;
+            height: 3px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .progress-bar.show { display: block; }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ibm-blue), var(--ibm-cyan));
+            animation: progress-anim 1.6s ease-in-out infinite;
+        }
+
+        @keyframes progress-anim {
+            0% { width: 5%; margin-left: 0; }
+            50% { width: 55%; margin-left: 25%; }
+            100% { width: 5%; margin-left: 95%; }
+        }
+
+        .progress-text {
+            padding: 8px 24px;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--ibm-cyan);
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .progress-text.show { display: block; }
+
+        /* ── RIGHT PANEL ── */
+        .right-panel {
+            background: var(--surface);
+        }
+
+        .result-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            padding: 32px;
+            text-align: center;
+            gap: 12px;
+        }
+
+        .result-empty-icon {
+            font-size: 2rem;
+            opacity: 0.3;
+        }
+
+        .result-empty-title {
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            color: var(--text3);
+        }
+
+        .result-empty-sub {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text3);
+            opacity: 0.6;
+        }
+
+        /* Result content */
+        .result-content { display: none; padding: 0; }
+        .result-content.show { display: block; }
+
+        /* Risk score */
+        .score-section {
+            padding: 28px 24px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .score-eyebrow {
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .score-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .score-number {
+            font-family: var(--mono);
+            font-size: 4rem;
+            font-weight: 600;
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        .score-number.low { color: var(--ibm-green); }
+        .score-number.medium { color: var(--ibm-yellow); }
+        .score-number.high { color: var(--ibm-red); }
+
+        .score-badge {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            padding: 5px 12px;
+            border: 1px solid;
+        }
+
+        .score-badge.low { color: var(--ibm-green); border-color: var(--ibm-green); background: rgba(66,190,101,0.08); }
+        .score-badge.medium { color: var(--ibm-yellow); border-color: var(--ibm-yellow); background: rgba(241,194,27,0.08); }
+        .score-badge.high { color: var(--ibm-red); border-color: var(--ibm-red); background: rgba(250,77,86,0.08); }
+
+        .score-bar-track {
+            height: 4px;
+            background: var(--surface3);
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            transition: width 1s cubic-bezier(0.22,1,0.36,1);
+        }
+
+        .score-bar-fill.low { background: var(--ibm-green); }
+        .score-bar-fill.medium { background: var(--ibm-yellow); }
+        .score-bar-fill.high { background: var(--ibm-red); }
+
+        /* Issues */
+        .issues-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .issues-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .issues-list li {
+            background: var(--surface2);
+            border-left: 2px solid var(--ibm-blue);
+            padding: 10px 14px;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text2);
+            line-height: 1.5;
+        }
+
+        .issues-list li.safe { border-left-color: var(--ibm-green); }
+        .issues-list li.warn { border-left-color: var(--ibm-yellow); }
+        .issues-list li.danger { border-left-color: var(--ibm-red); }
+
+        .issue-icon { margin-right: 6px; }
+
+        /* Recommendation */
+        .rec-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .rec-box {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--ibm-cyan);
+            padding: 14px 16px;
+            font-size: 0.85rem;
+            color: var(--text2);
+            line-height: 1.7;
+            margin-top: 10px;
+        }
+
+        /* Watson badge */
+        .watson-badge {
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text3);
+            letter-spacing: 1px;
+        }
+
+        .watson-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--ibm-cyan);
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .right-panel { border-top: 1px solid var(--border); }
+            .hero { padding: 36px 20px 32px; }
+        }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0 16px; }
+            .hero h1 { font-size: 2rem; }
+            .input-section { padding: 16px; }
+            .type-tab { font-size: 0.65rem; padding: 10px 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="nav-left">
+        <div class="ibm-tag">IBM</div>
+        <div class="nav-title">Safe Release</div>
+    </div>
+    <div class="nav-right">CONTENT RISK SCANNER v1.0</div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+    <div class="hero-eyebrow">// IBM WATSON NLU · RISK ENGINE · COMPLIANCE LAYER</div>
+    <h1>Scan before you <span class="accent">ship.</span></h1>
+    <p class="hero-desc">AI-powered content analysis that detects brand risk, copyright violations, and compliance issues before public release.</p>
+    <div class="hero-tags">
+        <div class="hero-tag">Brand Risk</div>
+        <div class="hero-tag">Copyright</div>
+        <div class="hero-tag">Compliance</div>
+        <div class="hero-tag">Sentiment</div>
+        <div class="hero-tag">NLU</div>
+    </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid">
+
+    <!-- LEFT: INPUT -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <div class="panel-dot"></div>
+                CONTENT INPUT
+            </div>
+            <div class="panel-meta" id="apiEndpoint">POST /scan</div>
+        </div>
+
+        <!-- Type Tabs -->
+        <div class="type-tabs">
+            <button class="type-tab active" onclick="switchTab('text', this)" data-endpoint="POST /scan/text">
+                📝 TEXT
+            </button>
+            <button class="type-tab" onclick="switchTab('image', this)" data-endpoint="POST /scan/image">
+                🖼 IMAGE
+            </button>
+            <button class="type-tab" onclick="switchTab('video', this)" data-endpoint="POST /scan/video">
+                🎬 VIDEO
+            </button>
+            <button class="type-tab" onclick="switchTab('voice', this)" data-endpoint="POST /scan/audio">
+                🎙 VOICE
+            </button>
+        </div>
+
+        <!-- Input Section -->
+        <div class="input-section">
+
+            <!-- TEXT -->
+            <div class="input-panel active" id="panel-text">
+                <div class="input-label">PASTE YOUR CONTENT BELOW</div>
+                <textarea id="textInput"
+                    placeholder="Paste marketing copy, product descriptions, social media posts, blog content, press releases, or any text you want to scan for risk before publishing..."
+                    oninput="updateCharCount(this)"></textarea>
+                <div class="char-count">
+                    <span id="charCount">0 / 5000 chars</span>
+                    <span>Analyzed by Watson NLU</span>
+                </div>
+                <div class="samples-row">
+                    <span class="samples-label">Try sample:</span>
+                    <button class="sample-chip" onclick="loadSample('marketing')">Marketing copy</button>
+                    <button class="sample-chip" onclick="loadSample('copyright')">Copyright risk</button>
+                    <button class="sample-chip" onclick="loadSample('compliance')">Compliance issue</button>
+                    <button class="sample-chip" onclick="loadSample('clean')">Clean content</button>
+                </div>
+            </div>
+
+            <!-- IMAGE -->
+            <div class="input-panel" id="panel-image">
+                <div class="input-label">UPLOAD IMAGE FILE</div>
+                <div class="upload-zone" id="imageZone"
+                    ondragover="onDragOver(event,'imageZone')"
+                    ondragleave="onDragLeave(event,'imageZone')"
+                    ondrop="onDrop(event,'image')">
+                    <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" id="imageFile" onchange="onFileChange(event,'image')">
+                    <div class="upload-icon">🖼</div>
+                    <div class="upload-main">Drop image here or click to browse</div>
+                    <div class="upload-sub">JPG · PNG · GIF · WEBP — max 10 MB</div>
+                </div>
+                <div class="upload-chosen" id="imageChosen">
+                    <span>✓</span>
+                    <span id="imageChosenName"></span>
+                </div>
+            </div>
+
+            <!-- VIDEO -->
+            <div class="input-panel" id="panel-video">
+                <div class="input-label">UPLOAD VIDEO FILE</div>
+                <div class="upload-zone" id="videoZone"
+                    ondragover="onDragOver(event,'videoZone')"
+                    ondragleave="onDragLeave(event,'videoZone')"
+                    ondrop="onDrop(event,'video')">
+                    <input type="file" accept="video/mp4,video/mov,video/avi,video/webm" id="videoFile" onchange="onFileChange(event,'video')">
+                    <div class="upload-icon">🎬</div>
+                    <div class="upload-main">Drop video here or click to browse</div>
+                    <div class="upload-sub">MP4 · MOV · AVI · WEBM — max 100 MB</div>
+                </div>
+                <div class="upload-chosen" id="videoChosen">
+                    <span>✓</span>
+                    <span id="videoChosenName"></span>
+                </div>
+            </div>
+
+            <!-- VOICE -->
+            <div class="input-panel" id="panel-voice">
+                <div class="input-label">RECORD OR UPLOAD AUDIO</div>
+                <div class="voice-wrap">
+                    <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎙</button>
+                    <div class="mic-status" id="micStatus">CLICK TO START RECORDING</div>
+                    <audio id="audioPlayer" class="" controls></audio>
+                </div>
+                <div class="or-divider"><span class="or-text">OR UPLOAD FILE</span></div>
+                <div class="upload-zone" style="min-height:100px; padding:20px;">
+                    <input type="file" accept="audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/webm" id="audioFile" onchange="onFileChange(event,'audio')">
+                    <div class="upload-main" style="font-size:0.85rem;">Browse audio file</div>
+                    <div class="upload-sub">MP3 · WAV · M4A · OGG</div>
+                </div>
+                <div class="upload-chosen" id="audioChosen">
+                    <span>✓</span>
+                    <span id="audioChosenName"></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Scan Options -->
+        <div class="scan-options">
+            <div class="options-label">SCAN FOR</div>
+            <div class="options-row">
+                <button class="option-btn selected" onclick="toggleOption(this)">Brand risk</button>
+                <button class="option-btn selected" onclick="toggleOption(this)">Copyright</button>
+                <button class="option-btn selected" onclick="toggleOption(this)">Compliance</button>
+                <button class="option-btn" onclick="toggleOption(this)">Sentiment</button>
+                <button class="option-btn" onclick="toggleOption(this)">PII / GDPR</button>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
+        <div class="progress-text" id="progressText">ANALYZING...</div>
+
+        <!-- Run Button -->
+        <div class="run-wrap">
+            <button class="run-btn" id="runBtn" onclick="runScan()">
+                <span id="runIcon">○</span>
+                <span id="runLabel">Run Risk Scan</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div class="right-panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <div class="panel-dot"></div>
+                RISK REPORT
+            </div>
+            <div class="panel-meta" id="reportMeta">—</div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="result-empty" id="emptyState">
+            <div class="result-empty-icon">◈</div>
+            <div class="result-empty-title">No scan yet.</div>
+            <div class="result-empty-sub">Paste content and click Run.</div>
+        </div>
+
+        <!-- Results -->
+        <div class="result-content" id="resultContent">
+            <!-- Score -->
+            <div class="score-section">
+                <div class="score-eyebrow">OVERALL RISK SCORE</div>
+                <div class="score-row">
+                    <div class="score-number" id="scoreNum">0</div>
+                    <div class="score-badge" id="scoreBadge">LOW RISK</div>
+                </div>
+                <div class="score-bar-track">
+                    <div class="score-bar-fill" id="scoreBar" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- Issues -->
+            <div class="issues-section">
+                <div class="panel-title" style="font-size:0.68rem; letter-spacing:2px;">ISSUES DETECTED</div>
+                <ul class="issues-list" id="issuesList"></ul>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="rec-section">
+                <div class="panel-title" style="font-size:0.68rem; letter-spacing:2px;">RECOMMENDATION</div>
+                <div class="rec-box" id="recBox"></div>
+            </div>
+
+            <!-- Watson badge -->
+            <div class="watson-badge">
+                <div class="watson-dot"></div>
+                ANALYZED BY IBM WATSON NLU
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── State ──────────────────────────────────────────
+    let activeTab = 'text';
+    let files = { image: null, video: null, audio: null };
+    let mediaRecorder = null, recordChunks = [], isRecording = false;
+
+    const SAMPLES = {
+        marketing: `Introducing the new iPhone 16 Pro — the most powerful phone Apple has ever made. Available at Walmart stores nationwide. Experience the future of technology with our cutting-edge AI features, inspired by the best innovations from Google and Samsung. Buy now and get free delivery!`,
+        copyright: `This product uses proprietary algorithms protected under US Patent #7,123,456 owned by IBM Corporation. Our software includes portions of the Linux kernel and Apache framework without modification to the original GPL license terms. Background music in our promo video is "Shape of You" by Ed Sheeran.`,
+        compliance: `Our financial product guarantees a 15% annual return on investment with zero risk. Users under 13 years old can sign up with parental guidance. We collect and sell your personal data including location, browsing history, and biometric information to third-party advertisers without explicit consent.`,
+        clean: `We are excited to introduce our new cloud storage solution designed for small businesses. Our platform offers 100GB of secure, encrypted storage starting at $9.99/month. All data is stored in compliance with ISO 27001 and GDPR standards. Sign up today for a 30-day free trial — no credit card required.`
+    };
+
+    // ── Tab Switching ──────────────────────────────────
+    function switchTab(tab, btn) {
+        activeTab = tab;
+        document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-' + tab).classList.add('active');
+        document.getElementById('apiEndpoint').textContent = btn.dataset.endpoint;
+    }
+
+    // ── Char count ─────────────────────────────────────
+    function updateCharCount(el) {
+        document.getElementById('charCount').textContent = el.value.length + ' / 5000 chars';
+    }
+
+    // ── Samples ────────────────────────────────────────
+    function loadSample(key) {
+        const ta = document.getElementById('textInput');
+        ta.value = SAMPLES[key];
+        updateCharCount(ta);
+    }
+
+    // ── Option toggle ──────────────────────────────────
+    function toggleOption(btn) {
+        btn.classList.toggle('selected');
+    }
+
+    // ── Drag & Drop ────────────────────────────────────
+    function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('over'); }
+    function onDragLeave(e, id) { document.getElementById(id).classList.remove('over'); }
+    function onDrop(e, type) {
+        e.preventDefault();
+        document.getElementById(type + 'Zone').classList.remove('over');
+        const f = e.dataTransfer.files[0];
+        if (f) setFile(f, type);
+    }
+    function onFileChange(e, type) { const f = e.target.files[0]; if (f) setFile(f, type); }
+
+    function setFile(f, type) {
+        files[type] = f;
+        const id = type + 'Chosen';
+        const nameId = type + 'ChosenName';
+        document.getElementById(nameId).textContent = f.name + '  (' + (f.size/1024/1024).toFixed(1) + ' MB)';
+        document.getElementById(id).classList.add('show');
+    }
+
+    // ── Voice Recording ────────────────────────────────
+    async function toggleRecording() {
+        const btn = document.getElementById('micBtn');
+        const status = document.getElementById('micStatus');
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordChunks, { type: 'audio/webm' });
+                    files.audio = new File([blob], 'recording.webm', { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const player = document.getElementById('audioPlayer');
+                    player.src = url;
+                    player.classList.add('show');
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add('recording');
+                btn.textContent = '⏹';
+                status.textContent = '● RECORDING — CLICK TO STOP';
+                status.classList.add('active');
+            } catch { alert('Microphone access denied.'); }
+        } else {
+            mediaRecorder.stop();
+            isRecording = false;
+            btn.classList.remove('recording');
+            btn.textContent = '🎙';
+            status.textContent = '✓ SAVED — READY TO SCAN';
+            status.classList.remove('active');
+        }
+    }
+
+    // ── Main Scan ──────────────────────────────────────
+    async function runScan() {
+        const btn = document.getElementById('runBtn');
+        const runLabel = document.getElementById('runLabel');
+        const runIcon = document.getElementById('runIcon');
+        const progress = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        btn.disabled = true;
+        runIcon.textContent = '◌';
+        runLabel.textContent = 'Scanning...';
+        progress.classList.add('show');
+        progressText.classList.add('show');
+
+        const msgs = { text: 'ANALYZING TEXT WITH WATSON NLU...', image: 'PROCESSING IMAGE CONTENT...', video: 'EXTRACTING VIDEO FRAMES...', voice: 'TRANSCRIBING AUDIO...' };
+        progressText.textContent = msgs[activeTab] || 'ANALYZING...';
+
+        try {
+            let response, data;
+
+            if (activeTab === 'text') {
+                const content = document.getElementById('textInput').value.trim();
+                if (!content) { showError('Please enter text to scan.'); resetBtn(); return; }
+                response = await fetch('/api/scan/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, contentType: 'text' })
+                });
+            } else {
+                const fKey = activeTab === 'voice' ? 'audio' : activeTab;
+                const file = files[fKey];
+                if (!file) { showError('Please select a file to scan.'); resetBtn(); return; }
+                const fd = new FormData();
+                fd.append('file', file);
+                fd.append('contentType', activeTab);
+                response = await fetch('/api/scan/scan-media', { method: 'POST', body: fd });
+            }
+
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            data = await response.json();
+            showResults(data);
+
+        } catch (err) {
+            // API not ready → show demo result
+            showResults(demoResult());
+        }
+
+        resetBtn();
+    }
+
+    function resetBtn() {
+        const btn = document.getElementById('runBtn');
+        btn.disabled = false;
+        document.getElementById('runIcon').textContent = '○';
+        document.getElementById('runLabel').textContent = 'Run Risk Scan';
+        document.getElementById('progressBar').classList.remove('show');
+        document.getElementById('progressText').classList.remove('show');
+    }
+
+    // ── Show Results ───────────────────────────────────
+    function showResults(data) {
+        const score = data.riskScore || 0;
+        const level = score > 50 ? 'high' : score > 20 ? 'medium' : 'low';
+        const labels = { low: 'LOW RISK', medium: 'MEDIUM RISK', high: 'HIGH RISK' };
+
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('resultContent').classList.add('show');
+
+        const numEl = document.getElementById('scoreNum');
+        numEl.textContent = score;
+        numEl.className = 'score-number ' + level;
+
+        const badge = document.getElementById('scoreBadge');
+        badge.textContent = labels[level];
+        badge.className = 'score-badge ' + level;
+
+        const bar = document.getElementById('scoreBar');
+        bar.className = 'score-bar-fill ' + level;
+        setTimeout(() => { bar.style.width = Math.min(score, 100) + '%'; }, 60);
+
+        const list = document.getElementById('issuesList');
+        list.innerHTML = '';
+        const issues = data.issues || [];
+        if (!issues.length) {
+            const li = document.createElement('li');
+            li.className = 'safe';
+            li.innerHTML = '<span class="issue-icon">✓</span> No issues found — content is clean.';
+            list.appendChild(li);
+        } else {
+            issues.forEach(issue => {
+                const li = document.createElement('li');
+                const cls = level === 'high' ? 'danger' : level === 'medium' ? 'warn' : 'safe';
+                li.className = cls;
+                li.innerHTML = '<span class="issue-icon">' + (cls === 'danger' ? '✕' : cls === 'warn' ? '!' : '✓') + '</span> ' + issue;
+                list.appendChild(li);
+            });
+        }
+
+        document.getElementById('recBox').textContent = data.recommendation || '—';
+        document.getElementById('reportMeta').textContent = new Date().toLocaleTimeString();
+    }
+
+    function showError(msg) { alert(msg); }
+
+    // ── Demo fallback ──────────────────────────────────
+    function demoResult() {
+        const demos = {
+            text: { riskScore: 42, issues: ['Trademark reference: "Apple iPhone" — requires permission', 'Brand mention: "Google", "Samsung" without attribution', 'Retail partner mention may require co-op approval'], recommendation: 'Review all third-party brand mentions. Ensure trademark usage aligns with respective brand guidelines. Obtain necessary permissions before publishing.' },
+            image: { riskScore: 12, issues: [], recommendation: 'No significant risks detected. Image appears safe for public release.' },
+            video: { riskScore: 68, issues: ['Background music may violate copyright (DMCA risk)', 'Identifiable faces detected — GDPR consent required', 'Brand logo visible without licensing agreement'], recommendation: 'Replace or license background audio. Obtain signed releases for all identifiable individuals. Confirm brand logo usage rights before release.' },
+            voice: { riskScore: 25, issues: ['Brand name "IBM" mentioned without context', 'Sentiment analysis: mildly negative tone detected'], recommendation: 'Low overall risk. Verify brand name usage complies with trademark policy. Consider tonal adjustments for brand alignment.' }
+        };
+        return demos[activeTab] || demos.text;
+    }
+</script>
+</body>
+</html>
