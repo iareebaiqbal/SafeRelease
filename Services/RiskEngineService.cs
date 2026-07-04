@@ -40,10 +40,10 @@ namespace ContentRiskScanner.Services
         public RiskEngineService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _apiKey = configuration["WatsonNLU:ApiKey"]
-                ?? throw new InvalidOperationException("WatsonNLU:ApiKey missing in appsettings.json");
-            _url = configuration["WatsonNLU:Url"]
-                ?? throw new InvalidOperationException("WatsonNLU:Url missing in appsettings.json");
+           _apiKey = Environment.GetEnvironmentVariable("WATSON_API_KEY")
+    ?? throw new InvalidOperationException("WATSON_API_KEY missing in .env");
+_url = Environment.GetEnvironmentVariable("WATSON_URL")
+    ?? throw new InvalidOperationException("WATSON_URL missing in .env");
         }
 
         public async Task<ScanResponse> AnalyzeAsync(ScanRequest request)

@@ -149,3 +149,5 @@ C:\Users\user\SafeRelease\obj\Debug\net10.0\SafeRelease.genruntimeconfig.cache
 C:\Users\user\SafeRelease\obj\Debug\net10.0\ref\SafeRelease.dll
 C:\Users\user\SafeRelease\bin\Debug\net10.0\SafeRelease.staticwebassets.runtime.json
 C:\Users\user\SafeRelease\obj\Debug\net10.0\compressed\plgb71g8c7-{0}-52bq9r1yy8-52bq9r1yy8.gz
+C:\Users\user\SafeRelease\bin\Debug\net10.0\DotNetEnv.dll
+C:\Users\user\SafeRelease\bin\Debug\net10.0\Superpower.dll
