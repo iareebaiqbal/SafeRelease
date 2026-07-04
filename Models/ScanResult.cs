@@ -1,14 +1,12 @@
-using Microsoft.EntityFrameworkCore;
-using ContentRiskScanner.Models;
-
-namespace ContentRiskScanner.Data
+namespace ContentRiskScanner.Models
 {
-    public class AppDbContext : DbContext
+    public class ScanResult
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-        {
-        }
-
-        public DbSet<ScanResult> Scans { get; set; }
+        public int Id { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public int RiskScore { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string Issues { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

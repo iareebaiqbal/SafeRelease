@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+docling
+easyocr
+groq
+ibm-watson
+ibm-cloud-sdk-core
+pydantic
+pytest

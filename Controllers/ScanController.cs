@@ -9,10 +9,12 @@ namespace ContentRiskScanner.Controllers
     public class ScanController : ControllerBase
     {
         private readonly RiskEngineService _riskEngine;
+        private readonly ContentRiskScanner.Data.AppDbContext _context;
 
-        public ScanController(RiskEngineService riskEngine)
+        public ScanController(RiskEngineService riskEngine, ContentRiskScanner.Data.AppDbContext context)
         {
             _riskEngine = riskEngine;
+            _context = context;
         }
 
         [HttpPost("scan")]
@@ -22,13 +24,86 @@ namespace ContentRiskScanner.Controllers
                 return BadRequest("Content is required");
 
             var response = await _riskEngine.AnalyzeAsync(request);
-            return Ok(response);
+
+            // Save to database
+            var result = new ScanResult
+            {
+                Content = request.Content,
+                RiskScore = response.RiskScore,
+                Status = response.Status,
+                Issues = string.Join(", ", response.Issues),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(result);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { id = result.Id, response });
+        }
+
+        [HttpPost("scan-file")]
+        public async Task<IActionResult> ScanFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            using var httpClient = new HttpClient();
+            using var content = new MultipartFormDataContent();
+            
+            using var stream = file.OpenReadStream();
+            var streamContent = new StreamContent(stream);
+            content.Add(streamContent, "file", file.FileName);
+
+            var pythonSidecarUrl = Environment.GetEnvironmentVariable("PYTHON_SIDECAR_URL") ?? "http://localhost:8000/api/parse";
+            var sidecarResponse = await httpClient.PostAsync(pythonSidecarUrl, content);
+            
+            if (!sidecarResponse.IsSuccessStatusCode)
+            {
+                return StatusCode(500, "Error connecting to Python Sidecar for document parsing.");
+            }
+
+            var sidecarResultString = await sidecarResponse.Content.ReadAsStringAsync();
+            var sidecarResult = System.Text.Json.JsonDocument.Parse(sidecarResultString).RootElement;
+            
+            var analysis = sidecarResult.GetProperty("analysis");
+            
+            // Extract the result from the sidecar
+            int riskScore = analysis.GetProperty("risk_score").GetInt32();
+            string status = analysis.GetProperty("status").GetString() ?? "Unknown";
+            string issues = string.Join(", ", analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()));
+            
+            // Save to database
+            var dbResult = new ScanResult
+            {
+                Content = file.FileName,
+                RiskScore = riskScore,
+                Status = status,
+                Issues = issues,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(dbResult);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                id = dbResult.Id, 
+                fileName = file.FileName, 
+                riskScore, 
+                status, 
+                issues,
+                rawAnalysis = sidecarResultString
+            });
         }
 
         [HttpGet("report/{id}")]
-        public IActionResult Report(int id)
+        public async Task<IActionResult> Report(int id)
         {
-            return Ok("Report coming soon");
+            var result = await _context.Scans.FindAsync(id);
+            if (result == null)
+            {
+                return NotFound("Report not found");
+            }
+            return Ok(result);
         }
     }
 }

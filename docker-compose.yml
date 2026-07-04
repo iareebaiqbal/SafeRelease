@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  python-sidecar:
+    build:
+      context: ./PythonSidecar
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - IBM_CLOUD_APIKEY=${IBM_CLOUD_APIKEY}
+      - IBM_PROJECT_ID=${IBM_PROJECT_ID}
+
+  saferelease-api:
+    build:
+      context: .
+    ports:
+      - "5258:5258"
+    environment:
+      - PYTHON_SIDECAR_URL=http://python-sidecar:8000/api/parse
+    depends_on:
+      - python-sidecar

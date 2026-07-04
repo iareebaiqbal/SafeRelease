@@ -1,0 +1,5 @@
+ContentRiskScanner.Tests/
+PythonSidecar/
+.git/
+bin/
+obj/
