@@ -10,7 +10,8 @@
         "dependencies": {
           "Microsoft.AspNetCore.OpenApi": "10.0.9",
           "Microsoft.EntityFrameworkCore.Sqlite": "10.0.9",
-          "Microsoft.EntityFrameworkCore.Tools": "10.0.9"
+          "Microsoft.EntityFrameworkCore.Tools": "10.0.9",
+          "Newtonsoft.Json": "13.0.4"
         },
         "runtime": {
           "SafeRelease.dll": {}
@@ -260,7 +261,7 @@
           "Microsoft.Build.Framework": "18.0.2",
           "Microsoft.CodeAnalysis.Workspaces.Common": "5.0.0",
           "Microsoft.VisualStudio.SolutionPersistence": "1.0.52",
-          "Newtonsoft.Json": "13.0.3",
+          "Newtonsoft.Json": "13.0.4",
           "System.Composition": "9.0.0"
         },
         "runtime": {
@@ -355,7 +356,7 @@
           "Microsoft.EntityFrameworkCore.Relational": "10.0.9",
           "Microsoft.Extensions.DependencyModel": "10.0.9",
           "Mono.TextTemplating": "3.0.0",
-          "Newtonsoft.Json": "13.0.3"
+          "Newtonsoft.Json": "13.0.4"
         },
         "runtime": {
           "lib/net10.0/Microsoft.EntityFrameworkCore.Design.dll": {
@@ -437,11 +438,11 @@
           }
         }
       },
-      "Newtonsoft.Json/13.0.3": {
+      "Newtonsoft.Json/13.0.4": {
         "runtime": {
           "lib/net6.0/Newtonsoft.Json.dll": {
             "assemblyVersion": "13.0.0.0",
-            "fileVersion": "13.0.3.27908"
+            "fileVersion": "13.0.4.30916"
           }
         }
       },
@@ -811,12 +812,12 @@
       "path": "mono.texttemplating/3.0.0",
       "hashPath": "mono.texttemplating.3.0.0.nupkg.sha512"
     },
-    "Newtonsoft.Json/13.0.3": {
+    "Newtonsoft.Json/13.0.4": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
-      "path": "newtonsoft.json/13.0.3",
-      "hashPath": "newtonsoft.json.13.0.3.nupkg.sha512"
+      "sha512": "sha512-pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A==",
+      "path": "newtonsoft.json/13.0.4",
+      "hashPath": "newtonsoft.json.13.0.4.nupkg.sha512"
     },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.11": {
       "type": "package",

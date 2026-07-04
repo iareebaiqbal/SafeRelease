@@ -1,9 +1,17 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using ContentRiskScanner.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace ContentRiskScanner.Services
 {
     public class RiskEngineService
     {
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
+        private readonly string _url;
+
         private readonly Dictionary<string, (string issue, int score)> _rules = new(StringComparer.OrdinalIgnoreCase)
         {
             ["IBM"] = ("Trademark reference: IBM — verify usage rights", 15),
@@ -29,12 +37,22 @@ namespace ContentRiskScanner.Services
             ["inspired by"] = ("Potential trademark infringement: design inspiration", 20),
         };
 
+        public RiskEngineService(HttpClient httpClient, IConfiguration configuration)
+        {
+            _httpClient = httpClient;
+            _apiKey = configuration["WatsonNLU:ApiKey"]
+                ?? throw new InvalidOperationException("WatsonNLU:ApiKey missing in appsettings.json");
+            _url = configuration["WatsonNLU:Url"]
+                ?? throw new InvalidOperationException("WatsonNLU:Url missing in appsettings.json");
+        }
+
         public async Task<ScanResponse> AnalyzeAsync(ScanRequest request)
         {
             var issues = new List<string>();
             int score = 0;
             var content = request.Content;
 
+            // --- Existing keyword rule engine ---
             foreach (var rule in _rules)
             {
                 if (content.Contains(rule.Key, StringComparison.OrdinalIgnoreCase))
@@ -42,6 +60,47 @@ namespace ContentRiskScanner.Services
                     issues.Add(rule.Value.issue);
                     score += rule.Value.score;
                 }
+            }
+
+            // --- Watson NLU call ---
+            try
+            {
+                var watsonResult = await CallWatsonNluAsync(content);
+                if (watsonResult != null)
+                {
+                    // Sentiment risk
+                    if (watsonResult.Value.TryGetProperty("sentiment", out var sentiment) &&
+                        sentiment.TryGetProperty("document", out var doc) &&
+                        doc.TryGetProperty("label", out var label))
+                    {
+                        var sentimentLabel = label.GetString();
+                        if (sentimentLabel == "negative")
+                        {
+                            issues.Add("Watson NLU: Negative sentiment detected in content");
+                            score += 15;
+                        }
+                    }
+
+                    // Entities risk (e.g. detecting company/person names Watson finds)
+                    if (watsonResult.Value.TryGetProperty("entities", out var entities))
+                    {
+                        foreach (var entity in entities.EnumerateArray())
+                        {
+                            var type = entity.GetProperty("type").GetString();
+                            var text = entity.GetProperty("text").GetString();
+                            if (type == "Company")
+                            {
+                                issues.Add($"Watson NLU: Company entity detected — {text}");
+                                score += 10;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Don't crash the whole scan if Watson call fails — log and continue with rule-based results
+                issues.Add($"Watson NLU check skipped: {ex.Message}");
             }
 
             score = Math.Min(score, 100);
@@ -54,15 +113,52 @@ namespace ContentRiskScanner.Services
                 ? "Review before publishing. Some brand mentions or compliance issues need attention."
                 : "Content appears safe for release. Minor review recommended.";
 
-            var response = new ScanResponse
+            return new ScanResponse
             {
                 RiskScore = score,
                 Issues = issues,
                 Status = status,
                 Recommendation = recommendation
             };
+        }
 
-            return await Task.FromResult(response);
+        private async Task<JsonElement?> CallWatsonNluAsync(string content)
+        {
+            var endpoint = $"{_url}/v1/analyze?version=2022-04-07";
+
+            var payload = new
+            {
+                text = content,
+                features = new
+                {
+                    sentiment = new { },
+                    entities = new { },
+                    keywords = new { }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            // IBM Watson auth: username is literally "apikey", password is your API key
+            var authBytes = Encoding.ASCII.GetBytes($"apikey:{_apiKey}");
+            requestMessage.Headers.Authorization =
+                new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+
+            var response = await _httpClient.SendAsync(requestMessage);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Watson NLU returned {(int)response.StatusCode}: {errorBody}");
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseBody);
+            return doc.RootElement.Clone();
         }
     }
 }
