@@ -1,0 +1,5 @@
+appsettings.json
+.env
+bin/
+obj/
+*.exe

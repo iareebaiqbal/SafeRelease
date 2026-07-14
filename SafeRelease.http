@@ -1,0 +1,12 @@
+@ContentRiskScanner_HostAddress = http://localhost:5258
+
+GET {{ContentRiskScanner_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+POST {{ContentRiskScanner_HostAddress}}/api/scan
+Content-Type: application/json
+
+{
+  "content": "This product is inspired by Apple design and shares confidential data without consent"
+}
