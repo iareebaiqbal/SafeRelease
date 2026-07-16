@@ -2,9 +2,10 @@ import os
 import json
 from groq import Groq
 
-# In a real scenario, you'd import IBM Watson SDKs here:
-# from ibm_watson_machine_learning.foundation_models import Model
-# from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
+# Import IBM Watsonx SDK
+from ibm_watsonx_ai.foundation_models import ModelInference
+from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
+from ibm_watsonx_ai import Credentials
 
 def analyze_risk(context: str) -> dict:
     """
@@ -18,11 +19,35 @@ def analyze_risk(context: str) -> dict:
     # Attempt IBM Watsonx.ai First
     if ibm_api_key and ibm_project_id:
         try:
-            # Placeholder for actual IBM Watsonx.ai call
-            # model = Model("ibm/granite-13b-chat-v2", credentials={"apikey": ibm_api_key}, project_id=ibm_project_id, ...)
-            # response = model.generate_text(context)
-            # return parse_llm_response(response)
-            pass
+            credentials = Credentials(
+                url="https://us-south.ml.cloud.ibm.com", # Default US South endpoint
+                api_key=ibm_api_key
+            )
+            
+            parameters = {
+                GenParams.DECODING_METHOD: "greedy",
+                GenParams.MAX_NEW_TOKENS: 1024,
+                GenParams.STOP_SEQUENCES: ["\n\n"]
+            }
+            
+            model = ModelInference(
+                model_id="ibm/granite-13b-chat-v2",
+                credentials=credentials,
+                project_id=ibm_project_id,
+                params=parameters
+            )
+            
+            response = model.generate_text(context)
+            
+            # Attempt to extract JSON from the response in case of conversational wrapper
+            start = response.find("{")
+            end = response.rfind("}") + 1
+            if start != -1 and end != 0:
+                json_str = response[start:end]
+                return json.loads(json_str)
+            else:
+                return json.loads(response)
+                
         except Exception as e:
             print(f"IBM Watsonx.ai failed: {e}. Falling back to Groq.")
             
@@ -44,7 +69,7 @@ def analyze_risk(context: str) -> dict:
                     "content": context,
                 }
             ],
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             response_format={"type": "json_object"}
         )
         

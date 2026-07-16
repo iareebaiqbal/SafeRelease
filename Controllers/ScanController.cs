@@ -38,7 +38,14 @@ namespace ContentRiskScanner.Controllers
             _context.Scans.Add(result);
             await _context.SaveChangesAsync();
 
-            return Ok(new { id = result.Id, response });
+            return Ok(new 
+            { 
+                id = result.Id, 
+                riskScore = response.RiskScore,
+                status = response.Status,
+                issues = response.Issues,
+                recommendation = response.Recommendation
+            });
         }
 
         [HttpPost("scan-file")]
@@ -70,7 +77,8 @@ namespace ContentRiskScanner.Controllers
             // Extract the result from the sidecar
             int riskScore = analysis.GetProperty("risk_score").GetInt32();
             string status = analysis.GetProperty("status").GetString() ?? "Unknown";
-            string issues = string.Join(", ", analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()));
+            var issuesList = analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()).ToList();
+            string issuesStr = string.Join(", ", issuesList);
             
             // Save to database
             var dbResult = new ScanResult
@@ -78,7 +86,7 @@ namespace ContentRiskScanner.Controllers
                 Content = file.FileName,
                 RiskScore = riskScore,
                 Status = status,
-                Issues = issues,
+                Issues = issuesStr,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -88,9 +96,72 @@ namespace ContentRiskScanner.Controllers
             return Ok(new { 
                 id = dbResult.Id, 
                 fileName = file.FileName, 
-                riskScore, 
-                status, 
-                issues,
+                riskScore = riskScore, 
+                status = status, 
+                issues = issuesList,
+                rawAnalysis = sidecarResultString
+            });
+        }
+
+        // Frontend calls THIS endpoint for image/video/voice tabs
+        // It sends: multipart/form-data with 'file' + 'contentType' fields
+        [HttpPost("scan-media")]
+        public async Task<IActionResult> ScanMedia([FromForm] IFormFile file, [FromForm] string contentType)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5); // Video/audio can take time
+
+            using var formContent = new MultipartFormDataContent();
+
+            using var stream = file.OpenReadStream();
+            var streamContent = new StreamContent(stream);
+            formContent.Add(streamContent, "file", file.FileName);
+            formContent.Add(new StringContent(contentType ?? "image"), "contentType");
+
+            var pythonSidecarUrl = Environment.GetEnvironmentVariable("PYTHON_SIDECAR_URL") ?? "http://localhost:8000/api/parse";
+            var sidecarResponse = await httpClient.PostAsync(pythonSidecarUrl, formContent);
+
+            if (!sidecarResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await sidecarResponse.Content.ReadAsStringAsync();
+                return StatusCode(500, $"Python sidecar error ({contentType}): {errorBody}");
+            }
+
+            var sidecarResultString = await sidecarResponse.Content.ReadAsStringAsync();
+            var sidecarResult = System.Text.Json.JsonDocument.Parse(sidecarResultString).RootElement;
+
+            var analysis = sidecarResult.GetProperty("analysis");
+
+            int riskScore = analysis.GetProperty("risk_score").GetInt32();
+            string status = analysis.GetProperty("status").GetString() ?? "Unknown";
+            var issuesList = analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()).ToList();
+            string recommendation = analysis.TryGetProperty("recommendation", out var rec) ? rec.GetString() ?? "" : "";
+            string issuesStr = string.Join(", ", issuesList);
+
+            var dbResult = new ScanResult
+            {
+                Content = $"[{contentType?.ToUpper()}] {file.FileName}",
+                RiskScore = riskScore,
+                Status = status,
+                Issues = issuesStr,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(dbResult);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = dbResult.Id,
+                fileName = file.FileName,
+                contentType,
+                riskScore,
+                status,
+                issues = issuesList,
+                recommendation,
                 rawAnalysis = sidecarResultString
             });
         }

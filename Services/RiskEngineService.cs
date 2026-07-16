@@ -40,10 +40,8 @@ namespace ContentRiskScanner.Services
         public RiskEngineService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-           _apiKey = Environment.GetEnvironmentVariable("WATSON_API_KEY")
-    ?? throw new InvalidOperationException("WATSON_API_KEY missing in .env");
-_url = Environment.GetEnvironmentVariable("WATSON_URL")
-    ?? throw new InvalidOperationException("WATSON_URL missing in .env");
+            _apiKey = Environment.GetEnvironmentVariable("WATSON_API_KEY") ?? "";
+            _url = Environment.GetEnvironmentVariable("WATSON_URL") ?? "";
         }
 
         public async Task<ScanResponse> AnalyzeAsync(ScanRequest request)

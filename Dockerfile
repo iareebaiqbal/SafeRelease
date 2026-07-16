@@ -1,6 +1,3 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-# Note: Falling back to 8.0/9.0 if 10.0 image is not available locally, but we will use the matching SDK for the project if possible.
-# Wait, let's use the standard multi-stage build.
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /app
 

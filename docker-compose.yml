@@ -18,5 +18,7 @@ services:
       - "5258:5258"
     environment:
       - PYTHON_SIDECAR_URL=http://python-sidecar:8000/api/parse
+      - WATSON_API_KEY=${WATSON_API_KEY}
+      - WATSON_URL=${WATSON_URL}
     depends_on:
       - python-sidecar

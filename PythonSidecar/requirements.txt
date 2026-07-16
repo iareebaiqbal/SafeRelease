@@ -6,5 +6,11 @@ easyocr
 groq
 ibm-watson
 ibm-cloud-sdk-core
+ibm-watsonx-ai
 pydantic
 pytest
+opencv-python-headless
+moviepy
+openai-whisper
+imageio
+imageio-ffmpeg
