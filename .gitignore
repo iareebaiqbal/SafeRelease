@@ -1,5 +1,23 @@
 appsettings.json
 .env
+scanner.db
+scanner.db-shm
+scanner.db-wal
+
+# .NET
 bin/
 obj/
 *.exe
+*.user
+*.suo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

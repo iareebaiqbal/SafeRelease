@@ -150,6 +150,7 @@ namespace ContentRiskScanner.Services
                 var watsonResult = await CallWatsonNluAsync(content);
                 if (watsonResult != null)
                 {
+                    // Sentiment risk
                     if (CategoryActive("Sentiment") &&
                         watsonResult.Value.TryGetProperty("sentiment", out var sentiment) &&
                         sentiment.TryGetProperty("document", out var doc) &&
@@ -163,6 +164,7 @@ namespace ContentRiskScanner.Services
                         }
                     }
 
+                    // Entities risk (e.g. detecting company/person names Watson finds)
                     if (CategoryActive("Brand risk") &&
                         watsonResult.Value.TryGetProperty("entities", out var entities))
                     {
@@ -181,6 +183,7 @@ namespace ContentRiskScanner.Services
             }
             catch (Exception ex)
             {
+                // Don't crash the whole scan if Watson call fails — log and continue with rule-based results
                 issues.Add($"Watson NLU check skipped: {ex.Message}");
             }
 
@@ -224,6 +227,7 @@ namespace ContentRiskScanner.Services
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
 
+            // IBM Watson auth: username is literally "apikey", password is your API key
             var authBytes = Encoding.ASCII.GetBytes($"apikey:{_apiKey}");
             requestMessage.Headers.Authorization =
                 new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));

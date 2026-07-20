@@ -12,6 +12,7 @@ namespace ContentRiskScanner.Controllers
         private readonly RiskEngineService _riskEngine;
         private readonly SpeechToTextService _speechToText;
         private readonly ImageDetectionService _imageDetection;
+        private readonly ContentRiskScanner.Data.AppDbContext _context;
 
         private static readonly string[] RiskyFilenameWords = new[]
         {
@@ -19,11 +20,16 @@ namespace ContentRiskScanner.Controllers
             "banned", "explicit", "restricted", "internal"
         };
 
-        public ScanController(RiskEngineService riskEngine, SpeechToTextService speechToText, ImageDetectionService imageDetection)
+        public ScanController(
+            RiskEngineService riskEngine,
+            SpeechToTextService speechToText,
+            ImageDetectionService imageDetection,
+            ContentRiskScanner.Data.AppDbContext context)
         {
             _riskEngine = riskEngine;
             _speechToText = speechToText;
             _imageDetection = imageDetection;
+            _context = context;
         }
 
         [HttpPost("scan")]
@@ -33,7 +39,28 @@ namespace ContentRiskScanner.Controllers
                 return BadRequest("Content is required");
 
             var response = await _riskEngine.AnalyzeAsync(request);
-            return Ok(response);
+
+            // Save to database
+            var result = new ScanResult
+            {
+                Content = request.Content,
+                RiskScore = response.RiskScore,
+                Status = response.Status,
+                Issues = string.Join(", ", response.Issues),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(result);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = result.Id,
+                riskScore = response.RiskScore,
+                status = response.Status,
+                issues = response.Issues,
+                recommendation = response.Recommendation
+            });
         }
 
         // Matches frontend fetch('/api/scan/scan-media', { method: 'POST', body: fd })
@@ -48,6 +75,7 @@ namespace ContentRiskScanner.Controllers
 
             var mediaType = contentType ?? "media";
             var categoriesValue = categories ?? string.Empty;
+            ScanResponse response;
 
             // --- Voice files: actual detection via Speech-to-Text + NLU ---
             if (mediaType.Equals("voice", StringComparison.OrdinalIgnoreCase))
@@ -60,27 +88,47 @@ namespace ContentRiskScanner.Controllers
                     ? "audio/wav"
                     : file.ContentType;
 
-                var result = await AnalyzeAudioAsync(audioBytes, audioContentType, file.FileName ?? string.Empty, categoriesValue);
-                return Ok(result);
+                response = await AnalyzeAudioAsync(audioBytes, audioContentType, file.FileName ?? string.Empty, categoriesValue);
             }
-
             // --- Video files: extract audio via FFmpeg, then reuse voice pipeline ---
-            if (mediaType.Equals("video", StringComparison.OrdinalIgnoreCase))
+            else if (mediaType.Equals("video", StringComparison.OrdinalIgnoreCase))
             {
-                var result = await AnalyzeVideoFileAsync(file, categoriesValue);
-                return Ok(result);
+                response = await AnalyzeVideoFileAsync(file, categoriesValue);
             }
-
             // --- Image: actual detection via Vision model ---
-            if (mediaType.Equals("image", StringComparison.OrdinalIgnoreCase))
+            else if (mediaType.Equals("image", StringComparison.OrdinalIgnoreCase))
             {
-                var result = await AnalyzeImageFileAsync(file);
-                return Ok(result);
+                response = await AnalyzeImageFileAsync(file);
+            }
+            // --- Anything else: filename + size checks only (deep analysis not configured) ---
+            else
+            {
+                response = AnalyzeMediaFile(file, mediaType);
             }
 
-            // --- Anything else: filename + size checks only (deep analysis not configured) ---
-            var basicResult = AnalyzeMediaFile(file, mediaType);
-            return Ok(await Task.FromResult(basicResult));
+            // Save to database
+            var dbResult = new ScanResult
+            {
+                Content = $"[{mediaType.ToUpper()}] {file.FileName}",
+                RiskScore = response.RiskScore,
+                Status = response.Status,
+                Issues = string.Join(", ", response.Issues),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(dbResult);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = dbResult.Id,
+                fileName = file.FileName,
+                contentType = mediaType,
+                riskScore = response.RiskScore,
+                status = response.Status,
+                issues = response.Issues,
+                recommendation = response.Recommendation
+            });
         }
 
         private async Task<ScanResponse> AnalyzeImageFileAsync(IFormFile file)
@@ -376,10 +424,138 @@ namespace ContentRiskScanner.Controllers
             };
         }
 
-        [HttpGet("report/{id}")]
-        public IActionResult Report(int id)
+        // Collaborator's original scan-media implementation, kept intact and
+        // available at a separate route (Python Sidecar based analysis).
+        // The primary /scan-media route above uses in-process C# analysis instead,
+        // but this version is preserved rather than deleted.
+        [HttpPost("scan-media-sidecar")]
+        public async Task<IActionResult> ScanMediaSidecar([FromForm] IFormFile file, [FromForm] string contentType)
         {
-            return Ok("Report coming soon");
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5); // Video/audio can take time
+
+            using var formContent = new MultipartFormDataContent();
+
+            using var stream = file.OpenReadStream();
+            var streamContent = new StreamContent(stream);
+            formContent.Add(streamContent, "file", file.FileName);
+            formContent.Add(new StringContent(contentType ?? "image"), "contentType");
+
+            var pythonSidecarUrl = Environment.GetEnvironmentVariable("PYTHON_SIDECAR_URL") ?? "http://localhost:8000/api/parse";
+            var sidecarResponse = await httpClient.PostAsync(pythonSidecarUrl, formContent);
+
+            if (!sidecarResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await sidecarResponse.Content.ReadAsStringAsync();
+                return StatusCode(500, $"Python sidecar error ({contentType}): {errorBody}");
+            }
+
+            var sidecarResultString = await sidecarResponse.Content.ReadAsStringAsync();
+            var sidecarResult = System.Text.Json.JsonDocument.Parse(sidecarResultString).RootElement;
+
+            var analysis = sidecarResult.GetProperty("analysis");
+
+            int riskScore = analysis.GetProperty("risk_score").GetInt32();
+            string status = analysis.GetProperty("status").GetString() ?? "Unknown";
+            var issuesList = analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()).ToList();
+            string recommendation = analysis.TryGetProperty("recommendation", out var rec) ? rec.GetString() ?? "" : "";
+            string issuesStr = string.Join(", ", issuesList);
+
+            var sidecarDbResult = new ScanResult
+            {
+                Content = $"[{contentType?.ToUpper()}] {file.FileName}",
+                RiskScore = riskScore,
+                Status = status,
+                Issues = issuesStr,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(sidecarDbResult);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = sidecarDbResult.Id,
+                fileName = file.FileName,
+                contentType,
+                riskScore,
+                status,
+                issues = issuesList,
+                recommendation,
+                rawAnalysis = sidecarResultString
+            });
+        }
+
+        // Document uploads (pdf, docx, etc.) still go through the Python Sidecar,
+        // since text-document parsing is a separate concern from media analysis.
+        [HttpPost("scan-file")]
+        public async Task<IActionResult> ScanFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            using var httpClient = new HttpClient();
+            using var content = new MultipartFormDataContent();
+
+            using var stream = file.OpenReadStream();
+            var streamContent = new StreamContent(stream);
+            content.Add(streamContent, "file", file.FileName);
+
+            var pythonSidecarUrl = Environment.GetEnvironmentVariable("PYTHON_SIDECAR_URL") ?? "http://localhost:8000/api/parse";
+            var sidecarResponse = await httpClient.PostAsync(pythonSidecarUrl, content);
+
+            if (!sidecarResponse.IsSuccessStatusCode)
+            {
+                return StatusCode(500, "Error connecting to Python Sidecar for document parsing.");
+            }
+
+            var sidecarResultString = await sidecarResponse.Content.ReadAsStringAsync();
+            var sidecarResult = System.Text.Json.JsonDocument.Parse(sidecarResultString).RootElement;
+
+            var analysis = sidecarResult.GetProperty("analysis");
+
+            // Extract the result from the sidecar
+            int riskScore = analysis.GetProperty("risk_score").GetInt32();
+            string status = analysis.GetProperty("status").GetString() ?? "Unknown";
+            var issuesList = analysis.GetProperty("issues").EnumerateArray().Select(x => x.GetString()).ToList();
+            string issuesStr = string.Join(", ", issuesList);
+
+            // Save to database
+            var dbResult = new ScanResult
+            {
+                Content = file.FileName,
+                RiskScore = riskScore,
+                Status = status,
+                Issues = issuesStr,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Scans.Add(dbResult);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = dbResult.Id,
+                fileName = file.FileName,
+                riskScore = riskScore,
+                status = status,
+                issues = issuesList,
+                rawAnalysis = sidecarResultString
+            });
+        }
+
+        [HttpGet("report/{id}")]
+        public async Task<IActionResult> Report(int id)
+        {
+            var result = await _context.Scans.FindAsync(id);
+            if (result == null)
+            {
+                return NotFound("Report not found");
+            }
+            return Ok(result);
         }
     }
 }

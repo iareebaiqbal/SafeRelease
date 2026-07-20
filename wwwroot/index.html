@@ -38,6 +38,7 @@
             overflow-x: hidden;
         }
 
+        /* ── NAVBAR ── */
         .navbar {
             background: #161616;
             border-bottom: 1px solid #393939;
@@ -77,6 +78,7 @@
             letter-spacing: 1px;
         }
 
+        /* ── HERO ── */
         .hero {
             padding: 56px 32px 52px;
             border-bottom: 1px solid var(--border);
@@ -137,12 +139,14 @@
             letter-spacing: 0.5px;
         }
 
+        /* ── MAIN LAYOUT ── */
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 420px;
             min-height: calc(100vh - 48px - 200px);
         }
 
+        /* ── LEFT PANEL ── */
         .left-panel {
             border-right: 1px solid var(--border);
             padding: 0;
@@ -182,6 +186,7 @@
             letter-spacing: 1px;
         }
 
+        /* ── CONTENT TYPE TABS ── */
         .type-tabs {
             display: flex;
             border-bottom: 1px solid var(--border);
@@ -216,6 +221,7 @@
             border-bottom: 2px solid var(--ibm-cyan);
         }
 
+        /* ── INPUT PANELS ── */
         .input-section { padding: 24px; }
 
         .input-label {
@@ -257,6 +263,7 @@
             color: var(--text3);
         }
 
+        /* Quick samples */
         .samples-row {
             margin-top: 14px;
             display: flex;
@@ -285,6 +292,7 @@
 
         .sample-chip:hover { border-color: var(--ibm-blue); color: var(--ibm-cyan); background: rgba(15,98,254,0.07); }
 
+        /* Upload Zone */
         .upload-zone {
             background: var(--surface2);
             border: 1px dashed var(--border2);
@@ -347,6 +355,7 @@
 
         .upload-chosen.show { display: flex; }
 
+        /* Voice */
         .voice-wrap {
             display: flex;
             flex-direction: column;
@@ -423,6 +432,7 @@
             letter-spacing: 2px;
         }
 
+        /* Scan options */
         .scan-options {
             padding: 16px 24px;
             border-top: 1px solid var(--border);
@@ -464,6 +474,7 @@
             color: #fff;
         }
 
+        /* Run button */
         .run-wrap {
             padding: 20px 24px;
         }
@@ -489,6 +500,7 @@
         .run-btn:hover:not(:disabled) { background: var(--ibm-blue-hover); }
         .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+        /* Progress */
         .progress-bar {
             display: none;
             height: 3px;
@@ -521,6 +533,7 @@
 
         .progress-text.show { display: block; }
 
+        /* ── RIGHT PANEL ── */
         .right-panel {
             background: var(--surface);
         }
@@ -554,9 +567,11 @@
             opacity: 0.6;
         }
 
+        /* Result content */
         .result-content { display: none; padding: 0; }
         .result-content.show { display: block; }
 
+        /* Risk score */
         .score-section {
             padding: 28px 24px 20px;
             border-bottom: 1px solid var(--border);
@@ -617,6 +632,7 @@
         .score-bar-fill.medium { background: var(--ibm-yellow); }
         .score-bar-fill.high { background: var(--ibm-red); }
 
+        /* Issues */
         .issues-section {
             padding: 20px 24px;
             border-bottom: 1px solid var(--border);
@@ -646,6 +662,7 @@
 
         .issue-icon { margin-right: 6px; }
 
+        /* Recommendation */
         .rec-section {
             padding: 20px 24px;
             border-bottom: 1px solid var(--border);
@@ -662,6 +679,7 @@
             margin-top: 10px;
         }
 
+        /* Watson badge */
         .watson-badge {
             padding: 14px 24px;
             display: flex;
@@ -686,6 +704,7 @@
             50% { opacity: 0.3; }
         }
 
+        /* Responsive */
         @media (max-width: 900px) {
             .main-grid { grid-template-columns: 1fr; }
             .right-panel { border-top: 1px solid var(--border); }
@@ -702,6 +721,7 @@
 </head>
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar">
     <div class="nav-left">
         <div class="ibm-tag">IBM</div>
@@ -710,6 +730,7 @@
     <div class="nav-right">CONTENT RISK SCANNER v1.0</div>
 </nav>
 
+<!-- HERO -->
 <div class="hero">
     <div class="hero-eyebrow">// IBM WATSON NLU · RISK ENGINE · COMPLIANCE LAYER</div>
     <h1>Scan before you <span class="accent">ship.</span></h1>
@@ -723,8 +744,10 @@
     </div>
 </div>
 
+<!-- MAIN GRID -->
 <div class="main-grid">
 
+    <!-- LEFT: INPUT -->
     <div class="left-panel">
         <div class="panel-header">
             <div class="panel-title">
@@ -734,6 +757,7 @@
             <div class="panel-meta" id="apiEndpoint">POST /scan</div>
         </div>
 
+        <!-- Type Tabs -->
         <div class="type-tabs">
             <button class="type-tab active" onclick="switchTab('text', this)" data-endpoint="POST /scan/text">
                 📝 TEXT
@@ -749,8 +773,10 @@
             </button>
         </div>
 
+        <!-- Input Section -->
         <div class="input-section">
 
+            <!-- TEXT -->
             <div class="input-panel active" id="panel-text">
                 <div class="input-label">PASTE YOUR CONTENT BELOW</div>
                 <textarea id="textInput"
@@ -769,6 +795,7 @@
                 </div>
             </div>
 
+            <!-- IMAGE -->
             <div class="input-panel" id="panel-image">
                 <div class="input-label">UPLOAD IMAGE FILE</div>
                 <div class="upload-zone" id="imageZone"
@@ -786,6 +813,7 @@
                 </div>
             </div>
 
+            <!-- VIDEO -->
             <div class="input-panel" id="panel-video">
                 <div class="input-label">UPLOAD VIDEO FILE</div>
                 <div class="upload-zone" id="videoZone"
@@ -803,6 +831,7 @@
                 </div>
             </div>
 
+            <!-- VOICE -->
             <div class="input-panel" id="panel-voice">
                 <div class="input-label">RECORD OR UPLOAD AUDIO</div>
                 <div class="voice-wrap">
@@ -824,6 +853,7 @@
 
         </div>
 
+        <!-- Scan Options -->
         <div class="scan-options">
             <div class="options-label">SCAN FOR</div>
             <div class="options-row">
@@ -835,9 +865,11 @@
             </div>
         </div>
 
+        <!-- Progress -->
         <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
         <div class="progress-text" id="progressText">ANALYZING...</div>
 
+        <!-- Run Button -->
         <div class="run-wrap">
             <button class="run-btn" id="runBtn" onclick="runScan()">
                 <span id="runIcon">○</span>
@@ -846,6 +878,7 @@
         </div>
     </div>
 
+    <!-- RIGHT: RESULTS -->
     <div class="right-panel">
         <div class="panel-header">
             <div class="panel-title">
@@ -855,13 +888,16 @@
             <div class="panel-meta" id="reportMeta">—</div>
         </div>
 
+        <!-- Empty state -->
         <div class="result-empty" id="emptyState">
             <div class="result-empty-icon">◈</div>
             <div class="result-empty-title">No scan yet.</div>
             <div class="result-empty-sub">Paste content and click Run.</div>
         </div>
 
+        <!-- Results -->
         <div class="result-content" id="resultContent">
+            <!-- Score -->
             <div class="score-section">
                 <div class="score-eyebrow">OVERALL RISK SCORE</div>
                 <div class="score-row">
@@ -873,16 +909,19 @@
                 </div>
             </div>
 
+            <!-- Issues -->
             <div class="issues-section">
                 <div class="panel-title" style="font-size:0.68rem; letter-spacing:2px;">ISSUES DETECTED</div>
                 <ul class="issues-list" id="issuesList"></ul>
             </div>
 
+            <!-- Recommendation -->
             <div class="rec-section">
                 <div class="panel-title" style="font-size:0.68rem; letter-spacing:2px;">RECOMMENDATION</div>
                 <div class="rec-box" id="recBox"></div>
             </div>
 
+            <!-- Watson badge -->
             <div class="watson-badge">
                 <div class="watson-dot"></div>
                 ANALYZED BY IBM WATSON NLU
@@ -892,6 +931,7 @@
 </div>
 
 <script>
+    // ── State ──────────────────────────────────────────
     let activeTab = 'text';
     let files = { image: null, video: null, audio: null };
     let mediaRecorder = null, recordChunks = [], isRecording = false;
@@ -903,6 +943,7 @@
         clean: `We are excited to introduce our new cloud storage solution designed for small businesses. Our platform offers 100GB of secure, encrypted storage starting at $9.99/month. All data is stored in compliance with ISO 27001 and GDPR standards. Sign up today for a 30-day free trial — no credit card required.`
     };
 
+    // ── Tab Switching ──────────────────────────────────
     function switchTab(tab, btn) {
         activeTab = tab;
         document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
@@ -921,16 +962,19 @@
         document.getElementById('reportMeta').textContent = '—';
     }
 
+    // ── Char count ─────────────────────────────────────
     function updateCharCount(el) {
         document.getElementById('charCount').textContent = el.value.length + ' / 5000 chars';
     }
 
+    // ── Samples ────────────────────────────────────────
     function loadSample(key) {
         const ta = document.getElementById('textInput');
         ta.value = SAMPLES[key];
         updateCharCount(ta);
     }
 
+    // ── Option toggle ──────────────────────────────────
     function toggleOption(btn) {
         btn.classList.toggle('selected');
     }
@@ -941,6 +985,7 @@
             .map(btn => btn.textContent.trim());
     }
 
+    // ── Drag & Drop ────────────────────────────────────
     function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('over'); }
     function onDragLeave(e, id) { document.getElementById(id).classList.remove('over'); }
     function onDrop(e, type) {
@@ -959,6 +1004,7 @@
         document.getElementById(id).classList.add('show');
     }
 
+    // ── Voice Recording ────────────────────────────────
     async function toggleRecording() {
         const btn = document.getElementById('micBtn');
         const status = document.getElementById('micStatus');
@@ -994,6 +1040,7 @@
         }
     }
 
+    // ── Main Scan ──────────────────────────────────────
     async function runScan() {
         const btn = document.getElementById('runBtn');
         const runLabel = document.getElementById('runLabel');
@@ -1056,6 +1103,7 @@
         document.getElementById('progressText').classList.remove('show');
     }
 
+    // ── Show Results ───────────────────────────────────
     function showResults(data) {
         const score = data.riskScore || 0;
         const level = score > 50 ? 'high' : score > 20 ? 'medium' : 'low';
