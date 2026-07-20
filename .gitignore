@@ -4,6 +4,9 @@ scanner.db
 scanner.db-shm
 scanner.db-wal
 
+ffmpeg.exe
+ffprobe.exe
+
 # .NET
 bin/
 obj/
