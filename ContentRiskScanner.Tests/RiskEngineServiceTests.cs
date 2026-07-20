@@ -5,12 +5,13 @@ using ContentRiskScanner.Services;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Moq.Protected;
+using Xunit;
 
 namespace ContentRiskScanner.Tests
 {
     public class RiskEngineServiceTests
     {
-        private RiskEngineService CreateService(string mockWatsonResponse = null, HttpStatusCode statusCode = HttpStatusCode.OK)
+        private RiskEngineService CreateService(string? mockWatsonResponse = null, HttpStatusCode statusCode = HttpStatusCode.OK)
         {
             var configurationMock = new Mock<IConfiguration>();
 

@@ -1,3 +1,5 @@
+using System;
+using System.Net.Http;
 using Xunit;
 using ContentRiskScanner.Controllers;
 using ContentRiskScanner.Models;
@@ -5,6 +7,7 @@ using ContentRiskScanner.Services;
 using ContentRiskScanner.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 
 namespace ContentRiskScanner.Tests
@@ -14,7 +17,7 @@ namespace ContentRiskScanner.Tests
         private AppDbContext GetInMemoryDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().String())
+                .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString())
                 .Options;
             return new AppDbContext(options);
         }
@@ -24,8 +27,20 @@ namespace ContentRiskScanner.Tests
         {
             // Arrange
             var dbContext = GetInMemoryDbContext();
-            var service = new RiskEngineService();
-            var controller = new ScanController(service, dbContext);
+            var config = new ConfigurationManager
+            {
+                ["WATSON_API_KEY"] = "dummy",
+                ["WATSON_URL"] = "http://dummy",
+                ["STT_API_KEY"] = "dummy",
+                ["STT_URL"] = "http://dummy",
+                ["GEMINI_API_KEY"] = "dummy",
+                ["GEMINI_URL"] = "http://dummy"
+            };
+            var httpClient = new HttpClient();
+            var service = new RiskEngineService(httpClient, config);
+            var speechService = new SpeechToTextService(httpClient, config);
+            var imageDetection = new ImageDetectionService(httpClient, config);
+            var controller = new ScanController(service, speechService, imageDetection, dbContext);
             var request = new ScanRequest { Content = "" };
 
             // Act
@@ -40,8 +55,20 @@ namespace ContentRiskScanner.Tests
         {
             // Arrange
             var dbContext = GetInMemoryDbContext();
-            var service = new RiskEngineService();
-            var controller = new ScanController(service, dbContext);
+            var config = new ConfigurationManager
+            {
+                ["WATSON_API_KEY"] = "dummy",
+                ["WATSON_URL"] = "http://dummy",
+                ["STT_API_KEY"] = "dummy",
+                ["STT_URL"] = "http://dummy",
+                ["GEMINI_API_KEY"] = "dummy",
+                ["GEMINI_URL"] = "http://dummy"
+            };
+            var httpClient = new HttpClient();
+            var service = new RiskEngineService(httpClient, config);
+            var speechService = new SpeechToTextService(httpClient, config);
+            var imageDetection = new ImageDetectionService(httpClient, config);
+            var controller = new ScanController(service, speechService, imageDetection, dbContext);
             var request = new ScanRequest { Content = "Safe test content without any bad words" };
 
             // Act
