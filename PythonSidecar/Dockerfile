@@ -2,10 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for EasyOCR/Docling if needed
+# Install system dependencies for EasyOCR/Docling/moviepy (ffmpeg required for audio extraction)
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

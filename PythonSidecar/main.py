@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 import uvicorn
 import os
+import tempfile
 from document_parser import parse_document
 from context_builder import build_context
 from llm_client import analyze_risk
@@ -25,12 +26,15 @@ async def parse_and_analyze(
     IBM services are always tried first; open-source libraries are fallbacks.
     """
 
-    # Save uploaded file to a temp path
-    file_path = f"temp_{file.filename}"
+    # FIXED: use tempfile.NamedTemporaryFile so each request gets a unique path
+    # in the OS temp directory — prevents path traversal and concurrent-upload races.
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext)
+    file_path = tmp.name
+    tmp.close()
+
     with open(file_path, "wb") as f:
         f.write(await file.read())
-
-    file_ext = os.path.splitext(file.filename)[1].lower()
 
     # Determine media_type — prefer explicit contentType from frontend
     if contentType in ("video",):

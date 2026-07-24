@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: saferelease
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   python-sidecar:
     build:
       context: ./PythonSidecar
@@ -10,6 +27,8 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - IBM_CLOUD_APIKEY=${IBM_CLOUD_APIKEY}
       - IBM_PROJECT_ID=${IBM_PROJECT_ID}
+      - WATSON_STT_API_KEY=${WATSON_STT_API_KEY}
+      - WATSON_STT_URL=${WATSON_STT_URL}
 
   saferelease-api:
     build:
@@ -17,8 +36,23 @@ services:
     ports:
       - "5258:5258"
     environment:
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=saferelease;Username=postgres;Password=postgres
       - PYTHON_SIDECAR_URL=http://python-sidecar:8000/api/parse
       - WATSON_API_KEY=${WATSON_API_KEY}
       - WATSON_URL=${WATSON_URL}
+      - IBM_CLOUD_APIKEY=${IBM_CLOUD_APIKEY}
+      - IBM_PROJECT_ID=${IBM_PROJECT_ID}
+      - STT_API_KEY=${STT_API_KEY}
+      - STT_URL=${STT_URL}
+      - TTS_API_KEY=${TTS_API_KEY}
+      - TTS_URL=${TTS_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_URL=${GEMINI_URL}
     depends_on:
-      - python-sidecar
+      postgres:
+        condition: service_healthy
+      python-sidecar:
+        condition: service_started
+
+volumes:
+  postgres_data:

@@ -33,8 +33,8 @@ namespace ContentRiskScanner.Tests
                 ["WATSON_URL"] = "http://dummy",
                 ["STT_API_KEY"] = "dummy",
                 ["STT_URL"] = "http://dummy",
-                ["GEMINI_API_KEY"] = "dummy",
-                ["GEMINI_URL"] = "http://dummy"
+                ["IBM_CLOUD_APIKEY"] = "dummy",
+                ["IBM_PROJECT_ID"] = "dummy"
             };
             var httpClient = new HttpClient();
             var service = new RiskEngineService(httpClient, config);
@@ -61,8 +61,8 @@ namespace ContentRiskScanner.Tests
                 ["WATSON_URL"] = "http://dummy",
                 ["STT_API_KEY"] = "dummy",
                 ["STT_URL"] = "http://dummy",
-                ["GEMINI_API_KEY"] = "dummy",
-                ["GEMINI_URL"] = "http://dummy"
+                ["IBM_CLOUD_APIKEY"] = "dummy",
+                ["IBM_PROJECT_ID"] = "dummy"
             };
             var httpClient = new HttpClient();
             var service = new RiskEngineService(httpClient, config);

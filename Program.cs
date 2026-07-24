@@ -16,12 +16,24 @@ builder.WebHost.ConfigureKestrel(options =>
 // Add services
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
-builder.Services.AddHttpClient<RiskEngineService>();        // NLU: text-based harm detection
-builder.Services.AddHttpClient<SpeechToTextService>();      // STT: voice/audio ko text me convert karne ke liye
-builder.Services.AddHttpClient<TextToSpeechService>();      // TTS: text ko audio me convert karne ke liye
-builder.Services.AddHttpClient<ImageDetectionService>();    // Image analysis: watsonx.ai Granite Vision se image scan
+builder.Services.AddHttpClient<RiskEngineService>();        // Watson NLU + Emotion + Language Translator integration
+builder.Services.AddHttpClient<SpeechToTextService>();      // Watson Speech to Text
+builder.Services.AddHttpClient<TextToSpeechService>();      // Watson Text to Speech
+builder.Services.AddHttpClient<ImageDetectionService>();    // Granite Vision (thread-safe IAM token)
+builder.Services.AddHttpClient<TranslatorService>();        // NEW: Watson Language Translator
+builder.Services.AddHttpClient<CosService>();               // NEW: IBM Cloud Object Storage
+builder.Services.AddSingleton<TranslatorService>(sp =>      // Singleton: stateless, safe to share
+    new TranslatorService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(), builder.Configuration));
+builder.Services.AddSingleton<CosService>(sp =>
+    new CosService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(), builder.Configuration));
+
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+    ?? throw new InvalidOperationException(
+        "DB_CONNECTION_STRING missing. Add it to your .env file: " +
+        "DB_CONNECTION_STRING=Host=...;Database=...;Username=...;Password=...");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=scanner.db"));
+    options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
@@ -32,11 +44,35 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 }
 
-// FFmpeg download karo aur path explicitly set karo — audio extraction ke liye zaroori
-string ffmpegPath = Path.Combine(AppContext.BaseDirectory, "FFmpeg");
-Directory.CreateDirectory(ffmpegPath);
-FFmpeg.SetExecutablesPath(ffmpegPath);
-await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegPath);
+// FFmpeg path set karo — system-installed binary prefer karein, fallback to bundled directory
+var systemFfmpeg = Environment.GetEnvironmentVariable("FFMPEG_EXECUTABLE_PATH");
+if (!string.IsNullOrEmpty(systemFfmpeg) && File.Exists(systemFfmpeg))
+{
+    FFmpeg.SetExecutablesPath(Path.GetDirectoryName(systemFfmpeg)!);
+}
+else
+{
+    var systemPaths = new[] { "/usr/bin", "/usr/local/bin", "/bin" };
+    var found = systemPaths.FirstOrDefault(p => File.Exists(Path.Combine(p, "ffmpeg")));
+    if (found != null)
+    {
+        FFmpeg.SetExecutablesPath(found);
+    }
+    else
+    {
+        string ffmpegPath = Path.Combine(AppContext.BaseDirectory, "FFmpeg");
+        Directory.CreateDirectory(ffmpegPath);
+        FFmpeg.SetExecutablesPath(ffmpegPath);
+        try
+        {
+            await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegPath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WARNING: FFmpeg download failed ({ex.Message}). Video audio extraction may be unavailable.");
+        }
+    }
+}
 
 // Middleware
 app.UseDefaultFiles();

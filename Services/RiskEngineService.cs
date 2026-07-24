@@ -10,6 +10,7 @@ namespace ContentRiskScanner.Services
     public class RiskEngineService
     {
         private readonly HttpClient _httpClient;
+        private readonly TranslatorService _translator;
         private readonly string _apiKey;
         private readonly string _url;
 
@@ -19,54 +20,54 @@ namespace ContentRiskScanner.Services
         private readonly Dictionary<string, (string issue, int score, string category)> _rules = new(StringComparer.OrdinalIgnoreCase)
         {
             // --- Brand / Trademark risk ---
-            ["IBM"] = ("Trademark reference: IBM — verify usage rights", 15, "Brand risk"),
-            ["Apple"] = ("Trademark reference: Apple — requires permission", 20, "Brand risk"),
-            ["Google"] = ("Brand mention: Google — attribution required", 15, "Brand risk"),
+            ["IBM"]       = ("Trademark reference: IBM — verify usage rights", 15, "Brand risk"),
+            ["Apple"]     = ("Trademark reference: Apple — requires permission", 20, "Brand risk"),
+            ["Google"]    = ("Brand mention: Google — attribution required", 15, "Brand risk"),
             ["Microsoft"] = ("Brand mention: Microsoft — verify licensing", 15, "Brand risk"),
-            ["Samsung"] = ("Brand mention: Samsung — attribution required", 10, "Brand risk"),
-            ["Nike"] = ("Trademark: Nike slogan/brand — requires permission", 25, "Brand risk"),
+            ["Samsung"]   = ("Brand mention: Samsung — attribution required", 10, "Brand risk"),
+            ["Nike"]      = ("Trademark: Nike slogan/brand — requires permission", 25, "Brand risk"),
 
             // --- Copyright risk ---
-            ["copyright"] = ("Copyright claim detected in content", 35, "Copyright"),
-            ["Sony Music"] = ("Copyright: Sony Music — DMCA risk", 45, "Copyright"),
-            ["no license"] = ("Licensing issue detected", 30, "Copyright"),
+            ["copyright"]                  = ("Copyright claim detected in content", 35, "Copyright"),
+            ["Sony Music"]                 = ("Copyright: Sony Music — DMCA risk", 45, "Copyright"),
+            ["no license"]                 = ("Licensing issue detected", 30, "Copyright"),
             ["without any formal licensing"] = ("IP Risk: using technology without licensing", 35, "Copyright"),
-            ["replicates"] = ("Copyright risk: software replication detected", 30, "Copyright"),
-            ["inspired by"] = ("Potential trademark infringement: design inspiration", 20, "Copyright"),
+            ["replicates"]                 = ("Copyright risk: software replication detected", 30, "Copyright"),
+            ["inspired by"]                = ("Potential trademark infringement: design inspiration", 20, "Copyright"),
 
             // --- Compliance / Financial risk ---
             ["guaranteed return"] = ("Financial compliance risk: guaranteed returns claim", 40, "Compliance"),
-            ["zero risk"] = ("Financial compliance risk: misleading investment claim", 40, "Compliance"),
-            ["confidential"] = ("Confidential information detected", 40, "Compliance"),
-            ["competitor"] = ("Competitor mention — brand risk", 30, "Compliance"),
+            ["zero risk"]         = ("Financial compliance risk: misleading investment claim", 40, "Compliance"),
+            ["confidential"]      = ("Confidential information detected", 40, "Compliance"),
+            ["competitor"]        = ("Competitor mention — brand risk", 30, "Compliance"),
 
             // --- Privacy / GDPR / COPPA risk ---
-            ["biometric"] = ("Privacy risk: biometric data collection mentioned", 35, "PII / GDPR"),
-            ["medical history"] = ("GDPR violation: medical data collection", 40, "PII / GDPR"),
-            ["under 13"] = ("COPPA violation: collecting data from minors", 50, "PII / GDPR"),
+            ["biometric"]          = ("Privacy risk: biometric data collection mentioned", 35, "PII / GDPR"),
+            ["medical history"]    = ("GDPR violation: medical data collection", 40, "PII / GDPR"),
+            ["under 13"]           = ("COPPA violation: collecting data from minors", 50, "PII / GDPR"),
             ["without user consent"] = ("GDPR violation: data sharing without consent", 45, "PII / GDPR"),
-            ["without consent"] = ("GDPR violation: no user consent", 40, "PII / GDPR"),
+            ["without consent"]    = ("GDPR violation: no user consent", 40, "PII / GDPR"),
 
             // --- Violence / Threats / Safety risk — always checked, not filterable ---
-            ["threaten"] = ("Violence risk: threatening language detected", 45, "Safety"),
-            ["threatened"] = ("Violence risk: threatening language detected", 45, "Safety"),
-            ["threat"] = ("Violence risk: threatening language detected", 40, "Safety"),
-            ["attack"] = ("Violence risk: language suggesting physical harm", 40, "Safety"),
-            ["hurt"] = ("Violence risk: language suggesting intent to harm", 35, "Safety"),
-            ["kill"] = ("Violence risk: severe/lethal language detected", 55, "Safety"),
-            ["shoot"] = ("Violence risk: weapon-related language detected", 55, "Safety"),
-            ["weapon"] = ("Violence risk: weapon reference detected", 45, "Safety"),
-            ["bomb"] = ("Violence risk: explosive/terrorism reference detected", 60, "Safety"),
-            ["violence"] = ("Violence risk: explicit violence reference", 45, "Safety"),
-            ["abuse"] = ("Safety risk: abuse-related language detected", 40, "Safety"),
-            ["assault"] = ("Violence risk: assault reference detected", 45, "Safety"),
-            ["harass"] = ("Harassment risk: harassment-related language detected", 35, "Safety"),
-            ["harassment"] = ("Harassment risk: harassment-related language detected", 35, "Safety"),
-            ["self-harm"] = ("Safety risk: self-harm reference detected", 55, "Safety"),
-            ["suicide"] = ("Safety risk: suicide-related language detected", 55, "Safety"),
+            // FIXED: merged overlapping stems (threat/threaten/threatened) into one entry
+            // to prevent triple-counting the score from a single word.
+            ["threat"]     = ("Violence risk: threatening language detected", 45, "Safety"),
+            ["attack"]     = ("Violence risk: language suggesting physical harm", 40, "Safety"),
+            ["hurt"]       = ("Violence risk: language suggesting intent to harm", 35, "Safety"),
+            ["kill"]       = ("Violence risk: severe/lethal language detected", 55, "Safety"),
+            ["shoot"]      = ("Violence risk: weapon-related language detected", 55, "Safety"),
+            ["weapon"]     = ("Violence risk: weapon reference detected", 45, "Safety"),
+            ["bomb"]       = ("Violence risk: explosive/terrorism reference detected", 60, "Safety"),
+            ["violence"]   = ("Violence risk: explicit violence reference", 45, "Safety"),
+            ["abuse"]      = ("Safety risk: abuse-related language detected", 40, "Safety"),
+            ["assault"]    = ("Violence risk: assault reference detected", 45, "Safety"),
+            // FIXED: merged harass/harassment into one entry
+            ["harassment"] = ("Harassment risk: harassment-related language detected", 40, "Safety"),
+            ["self-harm"]  = ("Safety risk: self-harm reference detected", 55, "Safety"),
+            ["suicide"]    = ("Safety risk: suicide-related language detected", 55, "Safety"),
             ["hate speech"] = ("Safety risk: hate speech reference detected", 50, "Safety"),
-            ["terrorism"] = ("Safety risk: terrorism-related language detected", 60, "Safety"),
-            ["extremist"] = ("Safety risk: extremist language detected", 50, "Safety"),
+            ["terrorism"]  = ("Safety risk: terrorism-related language detected", 60, "Safety"),
+            ["extremist"]  = ("Safety risk: extremist language detected", 50, "Safety"),
         };
 
         // --- PII detection patterns (email, phone number) — category "PII / GDPR" ---
@@ -78,32 +79,33 @@ namespace ContentRiskScanner.Services
             @"(\+?\d[\d\s\-\.\(\)]{7,}\d)",
             RegexOptions.Compiled);
 
-        public RiskEngineService(HttpClient httpClient, IConfiguration configuration)
+        public RiskEngineService(HttpClient httpClient, IConfiguration configuration, TranslatorService translator)
         {
             _httpClient = httpClient;
+            _translator = translator;
 
             _apiKey = Environment.GetEnvironmentVariable("WATSON_API_KEY")
                 ?? configuration["WATSON_API_KEY"]
                 ?? throw new InvalidOperationException(
-                    "WATSON_API_KEY missing. Root folder me .env file banayein aur usme WATSON_API_KEY=... likhein, " +
-                    "aur confirm karein Program.cs me Env.Load() call ho raha hai.");
+                    "WATSON_API_KEY missing. Root folder me .env file banayein aur usme WATSON_API_KEY=... likhein.");
 
             _url = Environment.GetEnvironmentVariable("WATSON_URL")
                 ?? configuration["WATSON_URL"]
                 ?? throw new InvalidOperationException(
-                    "WATSON_URL missing. Root folder me .env file banayein aur usme WATSON_URL=... likhein, " +
-                    "aur confirm karein Program.cs me Env.Load() call ho raha hai.");
+                    "WATSON_URL missing. Root folder me .env file banayein aur usme WATSON_URL=... likhein.");
         }
 
         public async Task<ScanResponse> AnalyzeAsync(ScanRequest request)
         {
             var issues = new List<string>();
             int score = 0;
-            var content = request.Content;
+
+            // --- IBM Language Translator: translate to English if needed ---
+            var (content, detectedLanguage) = await _translator.EnsureEnglishAsync(request.Content);
+            if (detectedLanguage != null && !detectedLanguage.StartsWith("en"))
+                issues.Add($"Watson Translator: content detected as '{detectedLanguage}' — translated to English for analysis");
 
             // --- Parse selected categories from the request ---
-            // Empty/null Categories = no filter, scan for everything (backward compatible
-            // with older frontend calls that don't send this field yet).
             var selectedCategories = (request.Categories ?? string.Empty)
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -126,25 +128,25 @@ namespace ContentRiskScanner.Services
                 }
             }
 
-            // --- PII detection: email address (category "PII / GDPR") ---
+            // --- PII detection (category "PII / GDPR") ---
             if (CategoryActive("PII / GDPR"))
             {
                 var emailMatches = EmailPattern.Matches(content);
                 if (emailMatches.Count > 0)
                 {
-                    issues.Add($"PII risk: email address detected in content ({emailMatches.Count} found) — verify consent/redaction before publishing");
+                    issues.Add($"PII risk: email address detected ({emailMatches.Count} found) — verify consent/redaction before publishing");
                     score += 35;
                 }
 
                 var phoneMatches = PhonePattern.Matches(content);
                 if (phoneMatches.Count > 0)
                 {
-                    issues.Add($"PII risk: phone number detected in content ({phoneMatches.Count} found) — verify consent/redaction before publishing");
+                    issues.Add($"PII risk: phone number detected ({phoneMatches.Count} found) — verify consent/redaction before publishing");
                     score += 35;
                 }
             }
 
-            // --- Watson NLU call (Sentiment category = sentiment; Brand risk category = company entities) ---
+            // --- Watson NLU: Sentiment + Emotion + Entity detection ---
             try
             {
                 var watsonResult = await CallWatsonNluAsync(content);
@@ -156,15 +158,37 @@ namespace ContentRiskScanner.Services
                         sentiment.TryGetProperty("document", out var doc) &&
                         doc.TryGetProperty("label", out var label))
                     {
-                        var sentimentLabel = label.GetString();
-                        if (sentimentLabel == "negative")
+                        if (label.GetString() == "negative")
                         {
                             issues.Add("Watson NLU: Negative sentiment detected in content");
                             score += 15;
                         }
                     }
 
-                    // Entities risk (e.g. detecting company/person names Watson finds)
+                    // NEW: NLU Emotion detection — zero extra API calls, same response
+                    if (CategoryActive("Sentiment") &&
+                        watsonResult.Value.TryGetProperty("emotion", out var emotion) &&
+                        emotion.TryGetProperty("document", out var emotionDoc) &&
+                        emotionDoc.TryGetProperty("emotion", out var emotionScores))
+                    {
+                        if (emotionScores.TryGetProperty("anger", out var anger) && anger.GetDouble() > 0.7)
+                        {
+                            issues.Add($"Watson NLU Emotion: High anger/hostility tone detected (score: {anger.GetDouble():F2})");
+                            score += 20;
+                        }
+                        if (emotionScores.TryGetProperty("disgust", out var disgust) && disgust.GetDouble() > 0.7)
+                        {
+                            issues.Add($"Watson NLU Emotion: High disgust tone detected (score: {disgust.GetDouble():F2})");
+                            score += 15;
+                        }
+                        if (emotionScores.TryGetProperty("fear", out var fear) && fear.GetDouble() > 0.7)
+                        {
+                            issues.Add($"Watson NLU Emotion: High fear/threatening tone detected (score: {fear.GetDouble():F2})");
+                            score += 15;
+                        }
+                    }
+
+                    // Brand entity detection
                     if (CategoryActive("Brand risk") &&
                         watsonResult.Value.TryGetProperty("entities", out var entities))
                     {
@@ -183,7 +207,6 @@ namespace ContentRiskScanner.Services
             }
             catch (Exception ex)
             {
-                // Don't crash the whole scan if Watson call fails — log and continue with rule-based results
                 issues.Add($"Watson NLU check skipped: {ex.Message}");
             }
 
@@ -216,8 +239,10 @@ namespace ContentRiskScanner.Services
                 features = new
                 {
                     sentiment = new { },
-                    entities = new { },
-                    keywords = new { }
+                    // NEW: emotion feature added — uses same NLU call, no extra cost
+                    emotion   = new { },
+                    entities  = new { },
+                    keywords  = new { }
                 }
             };
 
@@ -227,12 +252,13 @@ namespace ContentRiskScanner.Services
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
 
-            // IBM Watson auth: username is literally "apikey", password is your API key
             var authBytes = Encoding.ASCII.GetBytes($"apikey:{_apiKey}");
             requestMessage.Headers.Authorization =
                 new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
 
-            var response = await _httpClient.SendAsync(requestMessage);
+            // FIXED: 15-second timeout prevents hanging if Watson NLU is slow
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var response = await _httpClient.SendAsync(requestMessage, cts.Token);
 
             if (!response.IsSuccessStatusCode)
             {

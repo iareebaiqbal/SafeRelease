@@ -727,7 +727,7 @@
         <div class="ibm-tag">IBM</div>
         <div class="nav-title">Safe Release</div>
     </div>
-    <div class="nav-right">CONTENT RISK SCANNER v1.0</div>
+    <div class="nav-right">CONTENT RISK SCANNER v6.1</div>
 </nav>
 
 <!-- HERO -->
@@ -1175,6 +1175,34 @@
     }
 
     function showError(msg) { alert(msg); }
+</script>
+
+<!-- Watson Assistant Web Chat widget (NEW) ─────────────────────────────────
+     Renders a "Need help?" chat button in the bottom-right corner.
+     Powered by IBM Watson Assistant — explains scan results in plain English.
+     Free tier: 1,000 monthly active users (Lite plan).
+     Keys are injected at page-serve time by the server if configured.
+     If WATSON_ASSISTANT_INTEGRATION_ID env var is blank the widget is hidden. -->
+<script>
+    (function() {
+        const integrationId = '{{WATSON_ASSISTANT_INTEGRATION_ID}}';
+        const region        = '{{WATSON_ASSISTANT_REGION}}';
+        const serviceInstanceId = '{{WATSON_ASSISTANT_SERVICE_INSTANCE_ID}}';
+
+        // Only mount if all three values are non-empty placeholder values
+        if (!integrationId || integrationId.startsWith('{{') || integrationId === 'your_assistant_integration_id_here') return;
+
+        window.watsonAssistantChatOptions = {
+            integrationID:     integrationId,
+            region:            region || 'us-south',
+            serviceInstanceID: serviceInstanceId,
+            onLoad: function(instance) { instance.render(); }
+        };
+
+        const t = document.createElement('script');
+        t.src = 'https://web-chat.global.assistant.watson.appdomain.cloud/versions/latest/WatsonAssistantChatEntry.js';
+        document.head.appendChild(t);
+    })();
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
+using System.Text;
 
 namespace ContentRiskScanner.Services
 {
@@ -16,32 +16,35 @@ namespace ContentRiskScanner.Services
 
             _apiKey = Environment.GetEnvironmentVariable("TTS_API_KEY")
                 ?? configuration["TTS_API_KEY"]
-                ?? throw new InvalidOperationException(
-                    "TTS_API_KEY missing. .env file me TTS_API_KEY=... add karein.");
+                ?? ""; // Don't throw immediately so app boots even if TTS is disabled
 
             _url = Environment.GetEnvironmentVariable("TTS_URL")
                 ?? configuration["TTS_URL"]
-                ?? throw new InvalidOperationException(
-                    "TTS_URL missing. .env file me TTS_URL=... add karein.");
+                ?? "";
         }
 
-        public async Task<byte[]> SynthesizeAsync(string text, string voice = "en-US_AllisonV3Voice")
+        // Returns raw audio bytes (WAV or MP3) from IBM TTS
+        public async Task<byte[]> SynthesizeAudioAsync(string text, string acceptType = "audio/wav")
         {
-            var endpoint = $"{_url}/v1/synthesize?voice={Uri.EscapeDataString(voice)}";
+            if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_url))
+            {
+                throw new InvalidOperationException("IBM TTS keys are missing. Configure TTS_API_KEY and TTS_URL in .env");
+            }
 
-            var payload = new { text };
-            var json = JsonSerializer.Serialize(payload);
+            // Using AllisonV3Voice as a clear, professional American English voice
+            var endpoint = $"{_url}/v1/synthesize?voice=en-US_AllisonV3Voice";
 
+            var payload = new { text = text };
             using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
+            
+            // Specify the audio format we want back (e.g. audio/wav)
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(acceptType));
 
             var authBytes = Encoding.ASCII.GetBytes($"apikey:{_apiKey}");
-            requestMessage.Headers.Authorization =
-                new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
-
-            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mp3"));
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
 
             var response = await _httpClient.SendAsync(requestMessage);
 

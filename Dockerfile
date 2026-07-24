@@ -12,6 +12,10 @@ RUN dotnet publish "SafeRelease.csproj" -c Release -o /app/publish /p:UseAppHost
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview
 WORKDIR /app
+
+# Install ffmpeg so Xabe.FFmpeg can use the system binary (no runtime download needed)
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 EXPOSE 5258
