@@ -26,6 +26,16 @@ var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"
         "DB_CONNECTION_STRING missing. Add it to your .env file: " +
         "DB_CONNECTION_STRING=Host=...;Database=...;Username=...;Password=...");
 
+// Convert postgresql:// URL to ADO.NET connection string if needed
+if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) || 
+    connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+{
+    var uri = new Uri(connectionString);
+    var userInfo = uri.UserInfo.Split(':');
+    var password = userInfo.Length > 1 ? userInfo[1] : "";
+    connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={password};Ssl Mode=Require;Trust Server Certificate=true";
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
