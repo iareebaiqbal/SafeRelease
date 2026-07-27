@@ -12,7 +12,6 @@ namespace ContentRiskScanner.Controllers
         private readonly RiskEngineService _riskEngine;
         private readonly SpeechToTextService _speechToText;
         private readonly ImageDetectionService _imageDetection;
-        private readonly CosService _cos;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ContentRiskScanner.Data.AppDbContext _context;
 
@@ -26,14 +25,12 @@ namespace ContentRiskScanner.Controllers
             RiskEngineService riskEngine,
             SpeechToTextService speechToText,
             ImageDetectionService imageDetection,
-            CosService cos,
             IHttpClientFactory httpClientFactory,
             ContentRiskScanner.Data.AppDbContext context)
         {
             _riskEngine        = riskEngine;
             _speechToText      = speechToText;
             _imageDetection    = imageDetection;
-            _cos               = cos;
             _httpClientFactory = httpClientFactory;
             _context           = context;
         }
@@ -167,16 +164,6 @@ namespace ContentRiskScanner.Controllers
             _context.Scans.Add(dbResult);
             await _context.SaveChangesAsync();
 
-            // NEW: IBM Cloud Object Storage — archive the scanned file for audit trail
-            string? cosUrl = null;
-            if (_cos.IsConfigured)
-            {
-                using var ms = new MemoryStream();
-                await file.OpenReadStream().CopyToAsync(ms);
-                cosUrl = await _cos.UploadScanFileAsync(dbResult.Id, file.FileName, ms.ToArray(),
-                    string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType);
-            }
-
             return Ok(new
             {
                 id             = dbResult.Id,
@@ -186,8 +173,7 @@ namespace ContentRiskScanner.Controllers
                 status         = response.Status,
                 issues         = response.Issues,
                 recommendation = response.Recommendation,
-                rawAnalysis    = rawAnalysisString,
-                auditFileUrl   = cosUrl
+                rawAnalysis    = rawAnalysisString
             });
         }
 

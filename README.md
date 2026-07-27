@@ -12,7 +12,7 @@ Built exclusively on **IBM Cloud**, SafeRelease features a highly resilient, ent
 
 ## 🏗️ The Architecture
 
-SafeRelease is built using a modern, containerized microservices architecture hosted on **IBM Code Engine**, with persistent storage backed by **IBM Cloud Databases for PostgreSQL**.
+SafeRelease is built using a modern, containerized microservices architecture hosted on **IBM Code Engine**, with persistent storage backed by **PostgreSQL** (local via Docker Compose, or [Neon.tech](https://neon.tech) free tier for cloud deployments).
 
 ```
 Browser (index.html)
@@ -22,11 +22,9 @@ Browser (index.html)
 │  C# ASP.NET API  (port 5258)            │
 │  ┌─────────────────────────────────┐    │
 │  │ RiskEngineService               │◄───┼── Watson NLU (sentiment + emotion + entities)
-│  │  + TranslatorService            │◄───┼── Watson Language Translator
 │  │ SpeechToTextService             │◄───┼── Watson Speech to Text
 │  │ TextToSpeechService             │◄───┼── Watson Text to Speech
 │  │ ImageDetectionService           │◄───┼── watsonx.ai Granite Vision 3.2
-│  │ CosService                      │◄───┼── IBM Cloud Object Storage
 │  └─────────────────────────────────┘    │
 │               │ (sidecar call)           │
 └───────────────┼─────────────────────────┘
@@ -50,7 +48,7 @@ Browser (index.html)
 
 ## 🧠 IBM Services Ecosystem
 
-SafeRelease maximizes the IBM Cloud ecosystem to deliver unparalleled content analysis. We integrate **twelve distinct IBM technologies** to analyze every possible vector of a media file and host the platform.
+SafeRelease maximizes the IBM Cloud ecosystem to deliver unparalleled content analysis. We integrate **ten distinct IBM technologies** across Watson AI, watsonx.ai Generative AI, and IBM Cloud infrastructure — every service used is on an active, free-tier plan.
 
 ### 🔹 Watsonx.ai Generative Models (The Sidecar)
 1. **Granite Vision 3.2 2B:** Analyzes images and video frames to detect NSFW content, violence, PII, and unauthorized brand logos.
@@ -58,17 +56,17 @@ SafeRelease maximizes the IBM Cloud ecosystem to deliver unparalleled content an
 3. **Granite Guardian 3 8B:** Acts as a second-opinion classifier to flag social bias, profanity, and sexual content.
 
 ### 🔹 Classic Watson Services (The C# API)
-4. **Watson Natural Language Understanding (NLU):** Analyzes sentiment and extracts entities from text.
-5. **Watson NLU Emotion:** Zero-extra-API-call tone detection (Anger, Disgust, Fear) applied directly to scanned text.
-6. **Watson Speech to Text (STT):** Deep-listens to audio files and extracted video audio tracks, transcribing spoken words for risk analysis.
-7. **Watson Text to Speech (TTS):** Synthesizes auditory risk reports, allowing the platform to speak its findings out loud.
-8. **Watson Language Translator:** Automatically detects non-English content and translates it to English *before* scanning to ensure global compliance.
-9. **Watson Assistant:** Integrated as a Web Chat widget to explain complex scan results in plain English to non-technical end-users.
+4. **Watson Natural Language Understanding (NLU):** Analyzes sentiment and extracts entities from text. Free tier: 30,000 items/month.
+5. **Watson NLU Emotion:** Zero-extra-API-call tone detection (Anger, Disgust, Fear) — included in the NLU Lite plan at no extra cost.
+6. **Watson Speech to Text (STT):** Deep-listens to audio files and extracted video audio tracks, transcribing spoken words for risk analysis. Free tier: 500 min/month.
+7. **Watson Text to Speech (TTS):** Synthesizes auditory risk reports, allowing the platform to speak its findings out loud. Free tier: 10,000 chars/month.
+8. **Watson Assistant:** Integrated as a Web Chat widget to explain complex scan results in plain English to non-technical end-users. Free tier: 1,000 MAU/month.
 
 ### 🔹 IBM Cloud Infrastructure
-10. **IBM Cloud Databases for PostgreSQL:** Provides persistent, relational storage for historical scan reports and analytics.
-11. **IBM Cloud Object Storage (COS):** Provides an immutable audit trail by securely archiving the original media files tied to each scan ID.
-12. **IBM Code Engine & Container Registry:** Serverless, scale-to-zero container hosting for the entire Dockerized stack, with the images hosted directly on IBM Cloud.
+9. **IBM Code Engine:** Serverless, scale-to-zero container hosting for the entire Dockerized stack. Free tier: 100,000 vCPU-seconds + 200,000 GB-seconds/month.
+10. **IBM Container Registry:** Private Docker image registry used to store and deploy the SafeRelease container images. Free tier: 0.5 GB storage.
+
+> **Note on PostgreSQL:** IBM Cloud Databases for PostgreSQL has no free tier. For local development, PostgreSQL runs as a Docker Compose service. For free cloud hosting, use [Neon.tech](https://neon.tech) (free 512 MB).
 
 ---
 
@@ -99,7 +97,7 @@ git clone https://github.com/iareebaiqbal/SafeRelease.git
 cd SafeRelease
 cp .env.example .env
 ```
-Open `.env` and fill in your IBM Cloud API keys. (All required IBM services offer a perpetual Free/Lite tier).
+Open `.env` and fill in your IBM Cloud API keys. All required IBM services offer a perpetual Free/Lite tier.
 
 ### 3. Build and Run
 Start the entire stack (PostgreSQL, Python Sidecar, and C# API) with a single command:
@@ -110,6 +108,103 @@ docker-compose up --build -d
 ### 4. Access the Platform
 Once the containers are running, simply open your browser and navigate to:
 **[http://localhost:5258](http://localhost:5258)**
+
+---
+
+## ☁️ Deployment — IBM Cloud Code Engine
+
+Deploy the full stack to IBM Cloud using Code Engine (serverless containers) and IBM Container Registry.
+
+### Prerequisites
+- [IBM Cloud CLI](https://cloud.ibm.com/docs/cli) installed and logged in: `ibmcloud login --sso`
+- Container Registry and Code Engine plugins: `ibmcloud plugin install container-registry code-engine`
+
+### 1. Tag and Push Images to IBM Container Registry
+
+```bash
+# Log in to IBM Container Registry
+ibmcloud cr login
+
+# Create a namespace (one-time)
+ibmcloud cr namespace-add saferelease
+
+# Build and push the C# API image
+docker build -t us.icr.io/saferelease/saferelease-api:latest .
+docker push us.icr.io/saferelease/saferelease-api:latest
+
+# Build and push the Python sidecar image
+docker build -t us.icr.io/saferelease/python-sidecar:latest ./PythonSidecar
+docker push us.icr.io/saferelease/python-sidecar:latest
+```
+
+### 2. Create a Code Engine Project
+
+```bash
+ibmcloud ce project create --name saferelease
+ibmcloud ce project select --name saferelease
+```
+
+### 3. Create a Registry Secret (so Code Engine can pull your images)
+
+```bash
+ibmcloud ce secret create --format registry \
+  --name icr-secret \
+  --server us.icr.io \
+  --username iamapikey \
+  --password $(ibmcloud iam oauth-tokens --output json | jq -r '.iam_token' | cut -d' ' -f2)
+```
+
+### 4. Deploy the Python Sidecar
+
+```bash
+ibmcloud ce application create \
+  --name python-sidecar \
+  --image us.icr.io/saferelease/python-sidecar:latest \
+  --registry-secret icr-secret \
+  --port 8000 \
+  --min-scale 0 --max-scale 2 \
+  --env GROQ_API_KEY=your_groq_api_key \
+  --env IBM_CLOUD_APIKEY=your_ibm_cloud_apikey \
+  --env IBM_PROJECT_ID=your_project_id \
+  --env WATSON_STT_API_KEY=your_stt_api_key \
+  --env WATSON_STT_URL=https://api.us-south.speech-to-text.watson.cloud.ibm.com
+```
+
+### 5. Deploy the C# API
+
+Get the sidecar URL first: `ibmcloud ce application get --name python-sidecar --output url`
+
+```bash
+ibmcloud ce application create \
+  --name saferelease-api \
+  --image us.icr.io/saferelease/saferelease-api:latest \
+  --registry-secret icr-secret \
+  --port 5258 \
+  --min-scale 0 --max-scale 2 \
+  --env DB_CONNECTION_STRING="postgresql://user:pass@ep-xxx.neon.tech/saferelease?sslmode=require" \
+  --env PYTHON_SIDECAR_URL=https://<your-sidecar-url>/api/parse \
+  --env WATSON_API_KEY=your_nlu_api_key \
+  --env WATSON_URL=https://api.us-south.natural-language-understanding.watson.cloud.ibm.com \
+  --env IBM_CLOUD_APIKEY=your_ibm_cloud_apikey \
+  --env IBM_PROJECT_ID=your_project_id \
+  --env STT_API_KEY=your_stt_api_key \
+  --env STT_URL=https://api.us-south.speech-to-text.watson.cloud.ibm.com \
+  --env TTS_API_KEY=your_tts_api_key \
+  --env TTS_URL=https://api.us-south.text-to-speech.watson.cloud.ibm.com \
+  --env WATSON_ASSISTANT_INTEGRATION_ID=your_integration_id \
+  --env WATSON_ASSISTANT_REGION=us-south \
+  --env WATSON_ASSISTANT_SERVICE_INSTANCE_ID=your_instance_id
+```
+
+### 6. Get the Public URL
+
+```bash
+ibmcloud ce application get --name saferelease-api --output url
+```
+
+Open the returned URL in your browser — the full SafeRelease dashboard will be live.
+
+> **Cost note:** Code Engine's free monthly allowance (100k vCPU-seconds, 200k GB-seconds) is sufficient for moderate demo traffic. Scale-to-zero (`--min-scale 0`) ensures no charges when idle.
 
 ---
 

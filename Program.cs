@@ -16,16 +16,10 @@ builder.WebHost.ConfigureKestrel(options =>
 // Add services
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
-builder.Services.AddHttpClient<RiskEngineService>();        // Watson NLU + Emotion + Language Translator integration
+builder.Services.AddHttpClient<RiskEngineService>();        // Watson NLU: sentiment + emotion + entity detection
 builder.Services.AddHttpClient<SpeechToTextService>();      // Watson Speech to Text
 builder.Services.AddHttpClient<TextToSpeechService>();      // Watson Text to Speech
-builder.Services.AddHttpClient<ImageDetectionService>();    // Granite Vision (thread-safe IAM token)
-builder.Services.AddHttpClient<TranslatorService>();        // NEW: Watson Language Translator
-builder.Services.AddHttpClient<CosService>();               // NEW: IBM Cloud Object Storage
-builder.Services.AddSingleton<TranslatorService>(sp =>      // Singleton: stateless, safe to share
-    new TranslatorService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(), builder.Configuration));
-builder.Services.AddSingleton<CosService>(sp =>
-    new CosService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(), builder.Configuration));
+builder.Services.AddHttpClient<ImageDetectionService>();    // watsonx.ai Granite Vision (thread-safe IAM token)
 
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
     ?? throw new InvalidOperationException(

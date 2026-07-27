@@ -10,7 +10,6 @@ namespace ContentRiskScanner.Services
     public class RiskEngineService
     {
         private readonly HttpClient _httpClient;
-        private readonly TranslatorService _translator;
         private readonly string _apiKey;
         private readonly string _url;
 
@@ -79,10 +78,9 @@ namespace ContentRiskScanner.Services
             @"(\+?\d[\d\s\-\.\(\)]{7,}\d)",
             RegexOptions.Compiled);
 
-        public RiskEngineService(HttpClient httpClient, IConfiguration configuration, TranslatorService translator)
+        public RiskEngineService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _translator = translator;
 
             _apiKey = Environment.GetEnvironmentVariable("WATSON_API_KEY")
                 ?? configuration["WATSON_API_KEY"]
@@ -99,11 +97,7 @@ namespace ContentRiskScanner.Services
         {
             var issues = new List<string>();
             int score = 0;
-
-            // --- IBM Language Translator: translate to English if needed ---
-            var (content, detectedLanguage) = await _translator.EnsureEnglishAsync(request.Content);
-            if (detectedLanguage != null && !detectedLanguage.StartsWith("en"))
-                issues.Add($"Watson Translator: content detected as '{detectedLanguage}' — translated to English for analysis");
+            var content = request.Content;
 
             // --- Parse selected categories from the request ---
             var selectedCategories = (request.Categories ?? string.Empty)
