@@ -20,5 +20,6 @@ COPY --from=build /app/publish .
 
 EXPOSE 5258
 ENV ASPNETCORE_URLS=http://+:5258
+ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
 
 ENTRYPOINT ["dotnet", "SafeRelease.dll"]
